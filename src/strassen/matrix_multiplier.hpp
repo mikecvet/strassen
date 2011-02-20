@@ -25,6 +25,10 @@
 
 namespace strassen
 {
+  /**
+   * A matrix_multiplier object performs matrix multiplication on two arrays with given row and column
+   * bounds, representing matrices.
+   */
   template <typename T>
   class matrix_multiplier
   {

@@ -27,6 +27,9 @@
 
 namespace strassen
 {
+  /**
+   * A naive_matrix_multiplier multiples two given matrices using the naive O(n^3) multiplication algorithm.
+   */
   template <typename T>
   class naive_matrix_multiplier : public strassen::matrix_multiplier<T>
   {

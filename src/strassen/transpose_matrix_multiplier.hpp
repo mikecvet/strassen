@@ -27,6 +27,12 @@
 
 namespace strassen
 {
+  /**
+   * A transpose_matrix_multiplier multiplies two given matrices using the naive multiplication algorithm,
+   * with an optimization. Instead of iterating over the rows of one matrix and the columns of the other,
+   * take the transpose of the second matrix and perform a row-by-row multiplication. This greatly improves
+   * multiplication performance because better cache usage.
+   */
   template <typename T>
   class transpose_matrix_multiplier : public strassen::matrix_multiplier<T>
   {
@@ -72,6 +78,7 @@ namespace strassen
 	brows = bcols;
 	bcols = tmp;
 	
+	/* B is a malloc'd array containing the transpose of the matrix represented by b. */
 	T *B = transpose (b, brows, bcols);
 	T *C = (T *) malloc (m * m * sizeof (T));
 	const T *a_row = NULL;

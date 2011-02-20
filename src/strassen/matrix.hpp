@@ -33,34 +33,53 @@
 
 namespace strassen
 {
+  /**
+   * The matrix class is essentially a wrapper around an array of type T which maintains row and column
+   * information. Various matrix operations are defined. The work of actually multiplying two matrices
+   * is done by the matrix_multiplier<T> field present in the class. This defaults to a 
+   * strassen::strassen_matrix_multiplier<T> unless specified otherwise.
+   */
   template <typename T>
   class matrix
   {
     friend class iterator;
     
   private:
-    size_t _rows;
-    size_t _cols;
-    T *__matrix;
+    size_t _rows;   /* Number of rows in our matrix */
+    size_t _cols;   /* Number of columns in our matrix */
+    T *__matrix;    /* Our actual matrix data */
 
+    /* A matrix_multiplier performs one of several matrix multiplication algorithms */
     strassen::matrix_multiplier<T> *__mm;
 
+    /* Returns a reference to the matrix element (i, j) */
     T& __at (size_t i, size_t j);
+
+    /* Scalar multiplication */
     void __mult (T *a, size_t arows, size_t acols, T k);
-    void __mult (T *A, size_t arows, size_t acols, const matrix<T> &b);
+
+    /* Adds the given matrix to this matrix */
     void __add (T *A, size_t arows, size_t acols, const matrix<T> &b);
+
+    /* Subtracts the given matrix from this matrix */
     void __sub (T *A, size_t arows, size_t acols, const matrix<T> &b);
     
+    /* Determines equality */
     bool __equal (const matrix<T> &m);
 
   public:
+    /* Declare a new, empty matrix */
     matrix (matrix_multiplier<T> *mm = new strassen_matrix_multiplier<T> ());
+    /* Declare a new matrix with dimensions defined */
     matrix (size_t h, size_t w, matrix_multiplier<T> *mm = new strassen_matrix_multiplier<T> ());
     matrix (const matrix<T> &m);
     ~matrix ();
 
+    /* Clear the contents of this matrix */
     void clear ();
+    /* Initialize this matrix to zero */
     void zeroes ();
+    /* Initialize this matrix with random numbers bounded by the parameter; max = 0 means no bound */
     void random (uint32_t max = 0);
 
     T& at (size_t i, size_t j);
@@ -82,6 +101,7 @@ namespace strassen
     matrix<T>& operator = (const matrix<T> &m);
     bool operator == (const matrix<T> &m);
 
+    /* Iterator class allows iteration over the internal matrix data structures */
     class iterator
     {
     private:
@@ -169,6 +189,10 @@ namespace strassen
     memset (__matrix, 0, _rows * _cols * sizeof (T));
   }
 
+  /**
+   * Initialize this matrix to random values. Values are bounded by the max parameter
+   * unless it is zero, in which case they are not bounded.
+   */
   template <typename T>
   void
   matrix<T>::random (uint32_t max)
@@ -203,6 +227,9 @@ namespace strassen
     return _cols;
   }
 
+  /**
+   * Return a new array containing a copy of the data in our matrix.
+   */
   template <typename T>
   T*
   matrix<T>::raw_data_copy () const
@@ -220,6 +247,14 @@ namespace strassen
     __mult (__matrix, _rows, _cols, k);
   }
 
+  /**
+   * Main matrix multiplication function.
+   * 
+   * Given another matrix m, use the __mm object to multiply this matrix by m. Depending on 
+   * how this object was constructed, it may perform one of naive, transpose-naive, strassen, or
+   * parallel-strassen multiplication algorithms. Returns a new array of type T. If the return
+   * is NULL, something went wrong so nothing will be changed.
+   */
   template <typename T>
   void
   matrix<T>::mult (const matrix<T> &m)
@@ -275,7 +310,7 @@ namespace strassen
   matrix<T>&
   matrix<T>::operator * (const matrix<T> &m)
   {
-    __mult (__matrix, _rows, _cols, m);
+    mult (m);
     return (*this);
   }
 
