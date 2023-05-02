@@ -70,41 +70,41 @@ namespace strassen
   {
     if (arows == bcols)
       {
-	T t;
-	size_t m = arows;
-	size_t n = acols;
-	size_t im;
-	size_t tmp = brows;
-	brows = bcols;
-	bcols = tmp;
+        T t;
+        size_t m = arows;
+        size_t n = acols;
+        size_t im;
+        size_t tmp = brows;
+        brows = bcols;
+        bcols = tmp;
+        
+        /* B is a malloc'd array containing the transpose of the matrix represented by b. */
+        T *B = transpose (b, brows, bcols);
+        T *C = (T *) malloc (m * m * sizeof (T));
+        const T *a_row = NULL;
+        T *b_row = NULL;
 	
-	/* B is a malloc'd array containing the transpose of the matrix represented by b. */
-	T *B = transpose (b, brows, bcols);
-	T *C = (T *) malloc (m * m * sizeof (T));
-	const T *a_row = NULL;
-	T *b_row = NULL;
-	
-	for (size_t i = 0; i < m; i++)
-	  {
-	    im = i * m;
-	    a_row = &A[i * acols];	    
+        for (size_t i = 0; i < m; i++)
+          {
+            im = i * m;
+            a_row = &A[i * acols];	    
 
-	    for (size_t j = 0; j < m; j++)
-	      {
-		t = 0;
-		b_row = &B[j * bcols];
-		
-		for (size_t k = 0; k < n; k++)
-		  {
-		    t += (a_row[k] * b_row[k]);
-		  }
+            for (size_t j = 0; j < m; j++)
+              {
+                t = 0;
+                b_row = &B[j * bcols];
+                
+                for (size_t k = 0; k < n; k++)
+                  {
+                    t += (a_row[k] * b_row[k]);
+                  }
 
-		C[im++] = t;
-	      }
-	  }
-	
-	free (B);
-	return C;
+                C[im++] = t;
+              }
+          }
+        
+        free (B);
+        return C;
       }
     else
       arows = 0;
@@ -118,20 +118,20 @@ namespace strassen
   {    
     if (A)
       {
-	T *row = NULL;
-	T *m = (T *) malloc (rows * cols * sizeof (T));
-	
-	for (size_t i = 0; i < rows; i++)
-	  {
-	    row = &m[i * cols];
-	    
-	    for (size_t j = 0; j < cols; j++)
-	      {
-		row[j] = A[j * rows + i];
-	      }
-	  }
+        T *row = NULL;
+        T *m = (T *) malloc (rows * cols * sizeof (T));
+        
+        for (size_t i = 0; i < rows; i++)
+          {
+            row = &m[i * cols];
+            
+            for (size_t j = 0; j < cols; j++)
+              {
+                row[j] = A[j * rows + i];
+              }
+          }
 
-	return m;
+        return m;
       }
 
     return NULL;    

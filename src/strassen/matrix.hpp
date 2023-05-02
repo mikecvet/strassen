@@ -155,9 +155,9 @@ namespace strassen
   {
     if (__matrix)
       {
-	free (__matrix);
-	__matrix = NULL;
-	delete __mm;
+        free (__matrix);
+        __matrix = NULL;
+        delete __mm;
       }
   }
 
@@ -203,13 +203,13 @@ namespace strassen
 
     if (!max)
       {
-	for (size_t i = 0; i < n; i++)
-	  __matrix[i] = rand ();
+        for (size_t i = 0; i < n; i++)
+          __matrix[i] = rand ();
       }
     else
       {
-	for (size_t i = 0; i < n; i++)
-	  __matrix[i] = (rand () % max) + 1;
+        for (size_t i = 0; i < n; i++)
+          __matrix[i] = (rand () % max) + 1;
       }
   }
 
@@ -263,10 +263,10 @@ namespace strassen
 
     if (C)
       {
-	free (__matrix);
-	
-	__matrix = C; 
-	_cols = _rows;
+        free (__matrix);
+        
+        __matrix = C; 
+        _cols = _rows;
       }
   }
 
@@ -374,11 +374,11 @@ namespace strassen
   {
     if (_rows == b.rows () && _cols == b.cols ())
       {
-	size_t n = _rows * _cols;
-	T *B = b.__matrix;
+        size_t n = _rows * _cols;
+        T *B = b.__matrix;
 
-	for (size_t i = 0; i < n; i++)
-	  __matrix[i] = A[i] + B[i];
+        for (size_t i = 0; i < n; i++)
+          __matrix[i] = A[i] + B[i];
       }
     //else throw exception
   }
@@ -389,11 +389,11 @@ namespace strassen
   {
     if (_rows == b.rows () && _cols == b.cols ())
       {
-	size_t n = _rows * _cols;
-	T *B = b.__matrix;
+        size_t n = _rows * _cols;
+        T *B = b.__matrix;
 
-	for (size_t i = 0; i < n; i++)
-	  __matrix[i] = A[i] - B[i];
+        for (size_t i = 0; i < n; i++)
+          __matrix[i] = A[i] - B[i];
       }
     //else throw exception
   }
@@ -404,19 +404,19 @@ namespace strassen
   {
     if (_rows == m.rows () && _cols == m.cols ())
       {
-	size_t n = _rows * _cols;
-	T *B = m.__matrix;
+        size_t n = _rows * _cols;
+        T *B = m.__matrix;
 
-	for (size_t i = 0; i < n; i++)	  
-	  {
-	    if (__matrix[i] != B[i])
-	      {
-		fprintf (stderr, "failure: %d\n",__matrix[i]);
-		return false;
-	      }
-	  }
-	
-	return true;
+        for (size_t i = 0; i < n; i++)	  
+          {
+            if (__matrix[i] != B[i])
+              {
+          fprintf (stderr, "failure: %d\n",__matrix[i]);
+          return false;
+              }
+          }
+        
+        return true;
       }
     else
       return false;

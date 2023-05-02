@@ -106,64 +106,64 @@ namespace strassen
     /* Make sure this is a valid multiplication */
     if (acols == brows)
       {
-	/* Check to see if these matrices are already square and have dimensions of a power of 2. If not,
-	 * the matrices must be resized and padded with zeroes to meet this criteria. */
-	if (arows == acols && brows == bcols && !(arows & (arows - 1)))
-	  {
-	    T *C = __mult (m, n, arows);
-	    return C;
-	  }
-	else
-	  {
-	    size_t N;
-	    size_t max_term = acols;
+        /* Check to see if these matrices are already square and have dimensions of a power of 2. If not,
+        * the matrices must be resized and padded with zeroes to meet this criteria. */
+        if (arows == acols && brows == bcols && !(arows & (arows - 1)))
+          {
+            T *C = __mult (m, n, arows);
+            return C;
+          }
+        else
+          {
+            size_t N;
+            size_t max_term = acols;
 
-	    T *A = NULL;
-	    T *B = NULL;
-	    T *C = NULL;
+            T *A = NULL;
+            T *B = NULL;
+            T *C = NULL;
 
-	    if (arows >= acols && arows >= brows)
-	      max_term = arows;
-	    else if (acols >= arows && acols >= bcols)
-	      max_term = acols;
-	    else if (brows >= bcols && brows >= arows)
-	      max_term = brows;
-	    else if (bcols >= brows && bcols >= acols)
-	      max_term = bcols;
-	    
-	    /* Find the nearest power of 2 greater than the largest dimension of these matrices */
-	    N = std::pow (2, (size_t) (std::log (max_term) / __log2) + 1);
-	    
-	    /* If m needs padding, pad it */
-	    if (arows != acols || arows & (arows - 1))
-	      A = __pad (m, arows, acols, N);
-	    
-	    /* If n needs padding, pad it */
-	    if (brows != brows || brows & (brows - 1))
-	      B = __pad (n, brows, bcols, N);
+            if (arows >= acols && arows >= brows)
+              max_term = arows;
+            else if (acols >= arows && acols >= bcols)
+              max_term = acols;
+            else if (brows >= bcols && brows >= arows)
+              max_term = brows;
+            else if (bcols >= brows && bcols >= acols)
+              max_term = bcols;
+            
+            /* Find the nearest power of 2 greater than the largest dimension of these matrices */
+            N = std::pow (2, (size_t) (std::log (max_term) / __log2) + 1);
+            
+            /* If m needs padding, pad it */
+            if (arows != acols || arows & (arows - 1))
+              A = __pad (m, arows, acols, N);
+            
+            /* If n needs padding, pad it */
+            if (brows != bcols || brows & (brows - 1))
+              B = __pad (n, brows, bcols, N);
 
-	    /* __mult does the actual multiplication work */
-	    if (A && B)
-	      C = __mult (A, B, N);
-	    else if (A)
-	      C = __mult (A, n, N);
-	    else if (B)
-	      C = __mult (m, B, N);
+            /* __mult does the actual multiplication work */
+            if (A && B)
+              C = __mult (A, B, N);
+            else if (A)
+              C = __mult (A, n, N);
+            else if (B)
+              C = __mult (m, B, N);
 
-	    /* Extract the non-zero elements out of C and put them into a new matrix D which is 
-	     * of the size arows x bcols */
-	    T *D = __unpad (C, arows, arows, N);
-	    
-	    if (A)
-	      free (A);
+            /* Extract the non-zero elements out of C and put them into a new matrix D which is 
+            * of the size arows x bcols */
+            T *D = __unpad (C, arows, arows, N);
+            
+            if (A)
+              free (A);
 
-	    if (B)
-	      free (B);
+            if (B)
+              free (B);
 
-	    free (C);
-	    
-	    return D;
-	  }
+            free (C);
+            
+            return D;
+          }
       }
 
     return NULL;
@@ -183,7 +183,7 @@ namespace strassen
     /* If the given matrices are small, its more efficient to use the transpose naive algorithm. */
     if (n <= STRASSEN_THRESHOLD)
       {
-	return (__tmm.mult (A, B, n, n, n, n));
+	      return (__tmm.mult (A, B, n, n, n, n));
       }
 
     size_t m = n / 2;
@@ -215,15 +215,15 @@ namespace strassen
      * contents of C and return. */
     if ((!A[0] && !A[1] && __zeroes (A, n)) || (!B[0] && !B[1] && __zeroes (B, n)))
       {
-	memset (C, 0, n * n * sizeof (T));
-	return C;
+        memset (C, 0, n * n * sizeof (T));
+        return C;
       }
     
     /* Make room for the submatrices */
     for (uint32_t i = 0; i < 7; i++)
       {
-	AA[i] = (T *) malloc (m * m * sizeof (T));
-	BB[i] = (T *) malloc (m * m * sizeof (T));
+        AA[i] = (T *) malloc (m * m * sizeof (T));
+        BB[i] = (T *) malloc (m * m * sizeof (T));
       }
 
     /*
@@ -301,9 +301,9 @@ namespace strassen
 
     for (uint32_t i = 0; i < 7; i++)
       {
-	free (AA[i]);
-	free (BB[i]);
-	free (MM[i]);
+        free (AA[i]);
+        free (BB[i]);
+        free (MM[i]);
       }
 
     return C;
@@ -320,8 +320,8 @@ namespace strassen
 
     for (size_t i = 0; i < N; i++)
       {
-	if (A[i])
-	  return false;
+        if (A[i])
+          return false;
       }
 
     return true;
@@ -345,17 +345,17 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	a_row_indx = ((a_row_start + i) * n) + a_col_start;
-	b_row_indx = ((b_row_start + i) * n) + b_col_start;
+        im = i * m;
+        a_row_indx = ((a_row_start + i) * n) + a_col_start;
+        b_row_indx = ((b_row_start + i) * n) + b_col_start;
 
-	a_row = &A[a_row_indx];
-	b_row = &A[b_row_indx];
+        a_row = &A[a_row_indx];
+        b_row = &A[b_row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    C[im + j] = a_row[j] + b_row[j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            C[im + j] = a_row[j] + b_row[j];
+          }
       }
   }
 
@@ -374,14 +374,14 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	row_indx = ((row_start + i) * n) + col_start;
-	row = &C[row_indx];
+        im = i * m;
+        row_indx = ((row_start + i) * n) + col_start;
+        row = &C[row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    row[j] += A[im + j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            row[j] += A[im + j];
+          }
       }
   }
 
@@ -400,14 +400,14 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	row_indx = ((row_start + i) * n) + col_start;
-	row = &C[row_indx];
+        im = i * m;
+        row_indx = ((row_start + i) * n) + col_start;
+        row = &C[row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    row[j] = A[im + j] + B[im + j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            row[j] = A[im + j] + B[im + j];
+          }
       }
   }
 
@@ -429,17 +429,17 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	a_row_indx = ((a_row_start + i) * n) + a_col_start;
-	b_row_indx = ((b_row_start + i) * n) + b_col_start;
+        im = i * m;
+        a_row_indx = ((a_row_start + i) * n) + a_col_start;
+        b_row_indx = ((b_row_start + i) * n) + b_col_start;
 
-	a_row = &A[a_row_indx];
-	b_row = &A[b_row_indx];
+        a_row = &A[a_row_indx];
+        b_row = &A[b_row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    C[im + j] = a_row[j] - b_row[j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            C[im + j] = a_row[j] - b_row[j];
+          }
       }
   }
 
@@ -458,14 +458,14 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	row_indx = ((row_start + i) * n) + col_start;
-	row = &C[row_indx];
+        im = i * m;
+        row_indx = ((row_start + i) * n) + col_start;
+        row = &C[row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    row[j] -= A[im + j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            row[j] -= A[im + j];
+          }
       }
   }
  
@@ -484,14 +484,14 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	row_indx = ((row_start + i) * n) + col_start;
-	row = &C[row_indx];
+        im = i * m;
+        row_indx = ((row_start + i) * n) + col_start;
+        row = &C[row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    row[j] = A[im + j] - B[im + j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            row[j] = A[im + j] - B[im + j];
+          }
       }
   }
   
@@ -510,14 +510,14 @@ namespace strassen
 
     for (size_t i = 0; i < m; i++)
       {
-	im = i * m;
-	row_indx = ((row_start + i) * n) + col_start;
-	row = &A[row_indx];
+        im = i * m;
+        row_indx = ((row_start + i) * n) + col_start;
+        row = &A[row_indx];
 
-	for (size_t j = 0; j < m; j++)
-	  {
-	    C[im + j] = row[j];
-	  }
+        for (size_t j = 0; j < m; j++)
+          {
+            C[im + j] = row[j];
+          }
       }
   } 
 
@@ -535,28 +535,28 @@ namespace strassen
     
     for (size_t i = 0; i < rows; i++)
       {
-	in = i * n;
-	ir = i * rows;
+        in = i * n;
+        ir = i * rows;
 
-	for (size_t j = 0; j < cols; j++)
-	  {
-	    M[in + j] = m[ir + j];
-	  }
-	
-	for (size_t j = cols; j < n; j++)
-	  {
-	    M[in + j] = 0;
-	  }
+        for (size_t j = 0; j < cols; j++)
+          {
+            M[in + j] = m[ir + j];
+          }
+        
+        for (size_t j = cols; j < n; j++)
+          {
+            M[in + j] = 0;
+          }
       }
 
     for (size_t i = rows; i < n; i++)
       {
-	in = i * n;
+        in = i * n;
 
-	for (size_t j = 0; j < n; j++)
-	  {
-	    M[in + j] = 0;
-	  }
+        for (size_t j = 0; j < n; j++)
+          {
+            M[in + j] = 0;
+          }
       }
 
     return M;
@@ -575,13 +575,13 @@ namespace strassen
 
     for (size_t i = 0; i < rows; i++)
       {
-	in = i * n;
-	ir = i * rows;
+        in = i * n;
+        ir = i * rows;
 
-	for (size_t j = 0; j < cols; j++)
-	  {
-	    M[ir + j] = m[in + j];
-	  }
+        for (size_t j = 0; j < cols; j++)
+          {
+            M[ir + j] = m[in + j];
+          }
       }
 
     return M;

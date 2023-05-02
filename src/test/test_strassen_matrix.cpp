@@ -360,35 +360,35 @@ big_test (size_t start)
       
       secs[0] = 0;
       usecs[0] = 0;
-      /*
+      
       for (uint32_t i = 0; i < reps; i++)
-	{
-	  t.start ();
-	  m_nmm.mult (n);
-	  t.stop ();
-	  
-	  secs[0] += t.secs ();
-	  usecs[0] += t.usecs ();
-	}           
+        {
+          t.start ();
+          m_nmm.mult (n);
+          t.stop ();
+          
+          secs[0] += t.secs ();
+          usecs[0] += t.usecs ();
+        }           
 
       secs[0] = secs[0] / reps;
       usecs[0] = usecs[0] / reps;
       m_nmm.clear ();
-      */
+      
       printf ("MM time [naive]: %lu.%lu\n", secs[0], usecs[0]);
             
       secs[1] = 0;
       usecs[1] = 0;
       
       for (uint32_t i = 0; i < reps; i++)
-	{
-	  t.start ();
-	  m_tmm.mult (n);
-	  t.stop ();
-	  
-	  secs[1] += t.secs ();
-	  usecs[1] += t.usecs ();
-	}            
+        {
+          t.start ();
+          m_tmm.mult (n);
+          t.stop ();
+          
+          secs[1] += t.secs ();
+          usecs[1] += t.usecs ();
+        }            
 
       secs[1] = (time_t)(secs[1] / reps);
       usecs[1] = (time_t)(usecs[1] / reps);
@@ -400,14 +400,14 @@ big_test (size_t start)
       usecs[3] = 0;
       
       for (uint32_t i = 0; i < reps; i++)
-	{
-	  t.start ();
-	  m_smm.mult (n);
-	  t.stop ();
-	  
-	  secs[3] += t.secs ();
-	  usecs[3] += t.usecs ();
-	}      
+        {
+          t.start ();
+          m_smm.mult (n);
+          t.stop ();
+          
+          secs[3] += t.secs ();
+          usecs[3] += t.usecs ();
+        }      
 
       secs[3] = secs[3] / reps;
       usecs[3] = usecs[3] / reps;
@@ -419,14 +419,14 @@ big_test (size_t start)
       usecs[4] = 0;
       
       for (uint32_t i = 0; i < reps; i++)
-	{
-	  t.start ();
-	  m_psmm.mult (n);
-	  t.stop ();
-	  
-	  secs[4] += t.secs ();
-	  usecs[4] += t.usecs ();
-	}      
+        {
+          t.start ();
+          m_psmm.mult (n);
+          t.stop ();
+          
+          secs[4] += t.secs ();
+          usecs[4] += t.usecs ();
+        }      
 
       secs[4] = secs[4] / reps;
       usecs[4] = usecs[4] / reps;
@@ -435,12 +435,12 @@ big_test (size_t start)
       printf ("MM time [parallel strassen]: %lu.%lu\n", secs[4], usecs[4]);
 
       snprintf (buf, 128, "%lu %lu.%lu %lu.%lu %lu.%lu %lu.%lu %lu.%lu\n", 
-		s,
-		secs[0], usecs[0],
-		secs[1], usecs[1],
-		secs[2], usecs[2],
-		secs[3], usecs[3],
-		secs[4], usecs[4]);
+        s,
+        secs[0], usecs[0],
+        secs[1], usecs[1],
+        secs[2], usecs[2],
+        secs[3], usecs[3],
+        secs[4], usecs[4]);
 
       out.write (buf, strlen (buf));
       out.flush ();
