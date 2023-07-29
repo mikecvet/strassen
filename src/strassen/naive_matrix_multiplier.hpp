@@ -13,7 +13,7 @@ namespace strassen
   {
   public:
     naive_matrix_multiplier ();
-    ~naive_matrix_multiplier ();
+    virtual ~naive_matrix_multiplier ();
     
     T* mult (const T *a, const T *b, size_t arows, size_t acols, size_t brows, size_t bcols);
     matrix_multiplier<T>* copy () const;

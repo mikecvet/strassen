@@ -13,6 +13,7 @@ namespace strassen
   public:    
     virtual T* mult (const T *a, const T *b, size_t arows, size_t acols, size_t brows, size_t bcols) = 0;
     virtual matrix_multiplier<T>* copy () const = 0;
+    virtual ~matrix_multiplier<T>() {}
   };
 }
 
