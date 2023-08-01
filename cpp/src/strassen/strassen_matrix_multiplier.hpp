@@ -226,7 +226,7 @@ namespace strassen
     /* AA[0] = (A1,1 + A2,2) */
     __submatrix_add (AA[0], A, tl_row_start, tl_col_start, br_row_start, br_col_start, m, n);
     /* AA[1] = (A2,1 + A2,2) */
-    __submatrix_add (AA[1], A, bl_row_start, bl_col_start, br_row_start, br_row_start, m, n);
+    __submatrix_add (AA[1], A, bl_row_start, bl_col_start, br_row_start, br_col_start, m, n);
     /* AA[2] = (A1,1) */
     __submatrix_cpy (AA[2], A, tl_row_start, tl_col_start, m, n);
     /* AA[3] = (A2,2) */

@@ -145,11 +145,11 @@ namespace strassen
   {
     if (__matrix)
       {
-	_rows = 0;
-	_cols = 0;
-	
-	free (__matrix);
-	__matrix = NULL;
+        _rows = 0;
+        _cols = 0;
+        
+        free (__matrix);
+        __matrix = NULL;
       }
   }
 
@@ -389,8 +389,7 @@ namespace strassen
           {
             if (__matrix[i] != B[i])
               {
-          fprintf (stderr, "failure: %d\n",__matrix[i]);
-          return false;
+                return false;
               }
           }
         
