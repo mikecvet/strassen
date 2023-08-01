@@ -1,0 +1,23 @@
+[package]
+name = "rust"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "strassen"
+path = "src/main.rs"
+
+[lib]
+name = "strassen"
+path = "src/lib.rs"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[dependencies]
+colored = "2.0.4"
+clap = { version = "4.2.7", features = ["derive"] }
+rand = "0.8.5"
