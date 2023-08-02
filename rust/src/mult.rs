@@ -62,12 +62,10 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
 pub fn
 mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
-    //println!("s: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
-    let mut max_dimension = a.cols;
+    // println!("s: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
+    let mut max_dimension = a.rows;
 
-    if a.rows >= a.cols && a.rows >= b.rows {
-        max_dimension = a.rows;
-    } else if a.cols >= a.rows && a.cols >= b.cols {
+    if a.cols >= a.rows && a.cols >= b.cols {
         max_dimension = a.cols;
     } else if b.rows >= b.cols && b.rows >= a.rows {
         max_dimension = b.rows;
@@ -75,22 +73,18 @@ mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
         max_dimension = b.cols;
     }
 
-    /* Find the nearest power of 2 greater than the largest dimension of these matrices */
-    // let log2 = (2.0 as f32).log(10.0);
-    // let log_max = (max_dimension as f32).log(10.0);
-    // let padding_size: usize = (2 as usize).pow((log_max / log2) as u32 + 1);
-    
     if max_dimension % 2 == 1 {
         max_dimension += 1;
     }
 
-    // println!("input dimensions: a[{}, {}] b[{}, {}] max: {} padding: {}", 
-    // a.rows, a.cols, b.rows, b.cols, max_dimension, padding_size);
-
-    return __mult_strassen(
-        &a.pad(max_dimension), 
-        &b.pad(max_dimension)
-    ).reduce(a.rows, a.rows);
+    if a.is_square() && b.is_square() && a.rows == max_dimension {
+        return __mult_strassen(&a, &b);
+    } else {
+        return __mult_strassen(
+            &a.pad(max_dimension), 
+            &b.pad(max_dimension)
+        ).reduce(a.rows, a.rows);
+    }
 }
 
 fn
@@ -120,27 +114,21 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     let br_row_start = m;
     let br_col_start = m;
 
-    let mut a_submatrices: [Vec<i64>; 7] = [
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-    ];
+    let mut aa1 = Vec::with_capacity(m * m);
+    let mut aa2 = Vec::with_capacity(m * m);
+    let mut aa3 = Vec::with_capacity(m * m);
+    let mut aa4 = Vec::with_capacity(m * m);
+    let mut aa5 = Vec::with_capacity(m * m);
+    let mut aa6 = Vec::with_capacity(m * m);
+    let mut aa7 = Vec::with_capacity(m * m);
 
-    let mut b_submatrices: [Vec<i64>; 7] = [
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-        Vec::with_capacity(m * m),
-    ];
-
-    let mut intermediate:Vec<Matrix> = Vec::with_capacity(7);
+    let mut bb1 = Vec::with_capacity(m * m);
+    let mut bb2 = Vec::with_capacity(m * m);
+    let mut bb3 = Vec::with_capacity(m * m);
+    let mut bb4 = Vec::with_capacity(m * m);
+    let mut bb5 = Vec::with_capacity(m * m);
+    let mut bb6 = Vec::with_capacity(m * m);
+    let mut bb7 = Vec::with_capacity(m * m);
 
     /*
      * The output matrix C is expressed in terms of the block matrices M1..M7
@@ -162,63 +150,81 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
      */
 
     /* AA[0] = (A1,1 + A2,2) */
-    __submatrix_add (&mut a_submatrices[0], a, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
+    __submatrix_add (&mut aa1, a, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
     /* AA[1] = (A2,1 + A2,2) */
-    __submatrix_add (&mut a_submatrices[1], a, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
+    __submatrix_add (&mut aa2, a, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
     /* AA[2] = (A1,1) */
-    __submatrix_cpy (&mut a_submatrices[2], a, tl_row_start, tl_col_start, m);
+    __submatrix_cpy (&mut aa3, a, tl_row_start, tl_col_start, m);
     /* AA[3] = (A2,2) */
-    __submatrix_cpy (&mut a_submatrices[3], a, br_row_start, br_col_start, m);
+    __submatrix_cpy (&mut aa4, a, br_row_start, br_col_start, m);
     /* AA[4] = (A1,1 + A1,2) */
-    __submatrix_add (&mut a_submatrices[4], a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
+    __submatrix_add (&mut aa5, a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
     /* AA[5] = (A2,1 - A1,1) */
-    __submatrix_sub (&mut a_submatrices[5], a, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
+    __submatrix_sub (&mut aa6, a, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
     /* AA[6] = (A1,2 - A2,2) */
-    __submatrix_sub (&mut a_submatrices[6], a, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
+    __submatrix_sub (&mut aa7, a, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
 
     /* BB[0] = (B1,1 + B2,2) */
-    __submatrix_add (&mut b_submatrices[0], b, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
+    __submatrix_add (&mut bb1, b, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
     /* BB[1] = (B1,1) */
-    __submatrix_cpy (&mut b_submatrices[1], b, tl_row_start, tl_col_start, m);
+    __submatrix_cpy (&mut bb2, b, tl_row_start, tl_col_start, m);
     /* BB[2] = (B1,2 - B2,2) */
-    __submatrix_sub (&mut b_submatrices[2], b, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
+    __submatrix_sub (&mut bb3, b, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
     /* BB[3] = (B2,1 - B1,1) */
-    __submatrix_sub (&mut b_submatrices[3], b, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
+    __submatrix_sub (&mut bb4, b, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
     /* BB[4] = (B2,2) */
-    __submatrix_cpy (&mut b_submatrices[4], b, br_row_start, br_col_start, m);
+    __submatrix_cpy (&mut bb5, b, br_row_start, br_col_start, m);
     /* BB[5] = (B1,1 + B1,2) */
-    __submatrix_add (&mut b_submatrices[5], b, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m); 
+    __submatrix_add (&mut bb6, b, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m); 
     /* BB[6] = (B2,1 + B2,2) */
-    __submatrix_add (&mut b_submatrices[6], b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
+    __submatrix_add (&mut bb7, b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
      
-     for i in 0..7 {
-        intermediate.push(
-            mult_transpose(
-                &mut Matrix::with_array(a_submatrices[i].to_vec(), m, m),
-                &mut Matrix::with_array(b_submatrices[i].to_vec(), m, m)
-            )
-        );
-    }
+    let mut m1 = mult_strassen(
+        &mut Matrix::with_array(aa1, m, m),
+        &mut Matrix::with_array(bb1, m, m)
+    );
+
+    let m2 = mult_strassen(
+        &mut Matrix::with_array(aa2, m, m),
+        &mut Matrix::with_array(bb2, m, m)
+    );
+
+    let m3 = mult_strassen(
+        &mut Matrix::with_array(aa3, m, m),
+        &mut Matrix::with_array(bb3, m, m)
+    );
+
+    let mut m4 = mult_strassen(
+        &mut Matrix::with_array(aa4, m, m),
+        &mut Matrix::with_array(bb4, m, m)
+    );
+
+    let mut m5 = mult_strassen(
+        &mut Matrix::with_array(aa5, m, m),
+        &mut Matrix::with_array(bb5, m, m)
+    );
+
+    let m6 = mult_strassen(
+        &mut Matrix::with_array(aa6, m, m),
+        &mut Matrix::with_array(bb6, m, m)
+    );
+
+    let mut m7 = mult_strassen(
+        &mut Matrix::with_array(aa7, m, m),
+        &mut Matrix::with_array(bb7, m, m)
+    );
 
     /* C1,1 = M1 + M4 - M5 + M7 */
-    let mut m11 = intermediate[0].copy();
-    m11.add(&intermediate[3])
-         .sub(&intermediate[4])
-         .add(&intermediate[6]);
+    let m11 = m7.sub(&m5).add(&m4).add(&m1);
 
     /* C1,2 = M3 + M5 */
-    let mut m12 = intermediate[2].copy();
-    m12.add(&intermediate[4]);
+    let m12 = m5.add(&m3);
 
     /* C2,1 = M2 + M4 */
-    let mut m21 = intermediate[1].copy();
-    m21.add(&intermediate[3]);
+    let m21 = m4.add(&m2);
 
     /* C2,2 = M1 - M2 + M3 + M6 */
-    let mut m22 = intermediate[0].copy();
-    m22.sub(&intermediate[1])
-         .add(&intermediate[2])
-         .add(&intermediate[5]);
+    let m22 = m1.sub(&m2).add(&m3).add(&m6);
 
     return __reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
 }

@@ -15,10 +15,10 @@ impl Matrix {
         }
 
         Matrix {
-            rows:rows,
-            cols:cols,
+            rows: rows,
+            cols: cols,
             n: rows * cols,
-            array:array
+            array: array
         }
     }
 
@@ -43,13 +43,14 @@ impl Matrix {
         }
     }
 
+    #[inline]
     pub fn at (&self, i: usize, j: usize) -> i64 {
-        // return self.array[i * self.cols + j];
         unsafe {
             return *self.array.get_unchecked(i * self.cols + j);
         }
     }
 
+    #[inline]
     pub fn is_square (&self) -> bool {
         return self.rows == self.cols;
     }
@@ -67,6 +68,9 @@ impl Matrix {
     }
 
     pub fn sub (&mut self, b: &Matrix) -> &mut Matrix {
+        // println!("subtracting [{}, {} | {}] from [{}, {} | {}]", b.rows, b.cols, b.n, self.rows, self.cols, self.n);
+        // println!("self: {} b: {}", self, b);
+
         if self.rows == b.rows && self.cols == b.cols {
             for i in 0..self.n {
                 self.array[i] -= b.array[i];

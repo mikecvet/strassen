@@ -37,8 +37,8 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
         // println!("starting 100 trials with sizes between [{}, {}]", lower_bound, upper_bound);
 
         for _ in 0..trials {
-            let rows:usize = rng.gen_range(lower_bound..upper_bound);
-            let cols:usize = rng.gen_range(lower_bound..upper_bound);
+            let rows:usize = rng.gen_range(lower_bound..(upper_bound + 1));
+            let cols:usize = rng.gen_range(lower_bound..(upper_bound + 1));
 
             let mut v1:Vec<i64> = Vec::with_capacity((rows * cols) as usize);
             let mut v2:Vec<i64> = Vec::with_capacity((rows * cols) as usize);
@@ -50,7 +50,7 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
             let a = Matrix::with_array(v1, rows as usize, cols as usize);
             let b = Matrix::with_array(v2, cols as usize, rows as usize);
 
-            naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
+            // naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
             transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
             strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
         }
