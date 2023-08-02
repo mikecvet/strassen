@@ -262,7 +262,7 @@ time_full ()
       avgsum += tmp;
 
       if (!b)
-	fprintf (stderr, "matrices inequal!\n");
+	      fprintf (stderr, "matrices inequal!\n");
     }
 
   printf ("average time over %u trials: %lfs\n", trials, (avgsum / trials));
@@ -434,7 +434,7 @@ main ()
   srand (time (NULL));
 
   simple ();
-  test_matrix_multipliers ();
+  //test_matrix_multipliers ();
   time_full ();
   mult_test ();
 

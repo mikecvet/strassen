@@ -1,5 +1,8 @@
 pub use crate::matrix::Matrix;
+use rand::thread_rng;
 use std::io;
+
+static mut TEST_STATE:bool = false;
 
 pub fn 
 mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
@@ -29,6 +32,8 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
 
 pub fn 
 mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
+    // println!("t: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
+
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
@@ -57,6 +62,7 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
 pub fn
 mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
+    //println!("s: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
     let mut max_dimension = a.cols;
 
     if a.rows >= a.cols && a.rows >= b.rows {
@@ -70,24 +76,30 @@ mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     }
 
     /* Find the nearest power of 2 greater than the largest dimension of these matrices */
-    let log2 = (2.0 as f32).log(10.0);
-    let log_max = (max_dimension as f32).log(10.0);
-    let padding_size: usize = (2 as usize).pow((log_max / log2) as u32 + 1);
+    // let log2 = (2.0 as f32).log(10.0);
+    // let log_max = (max_dimension as f32).log(10.0);
+    // let padding_size: usize = (2 as usize).pow((log_max / log2) as u32 + 1);
+    
+    if max_dimension % 2 == 1 {
+        max_dimension += 1;
+    }
 
-    println!("input dimensions: a[{}, {}] b[{}, {}] max: {} padding: {}", 
-    a.rows, a.cols, b.rows, b.cols, max_dimension, padding_size);
+    // println!("input dimensions: a[{}, {}] b[{}, {}] max: {} padding: {}", 
+    // a.rows, a.cols, b.rows, b.cols, max_dimension, padding_size);
 
     return __mult_strassen(
-        &a.pad(padding_size), 
-        &b.pad(padding_size)
+        &a.pad(max_dimension), 
+        &b.pad(max_dimension)
     ).reduce(a.rows, a.rows);
 }
 
 fn
 __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
-    if a.rows <= 2 {
-        return mult_naive(a, b);
+    unsafe {
+        if (!TEST_STATE && a.rows <= 64) || (TEST_STATE && a.rows <= 2) {
+            return mult_transpose(a, b);
+        }
     }
 
     let m = a.rows / 2;
@@ -129,7 +141,6 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     ];
 
     let mut intermediate:Vec<Matrix> = Vec::with_capacity(7);
-    let mut result = Matrix::new(a.rows, a.cols);
 
     /*
      * The output matrix C is expressed in terms of the block matrices M1..M7
@@ -157,7 +168,7 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     /* AA[2] = (A1,1) */
     __submatrix_cpy (&mut a_submatrices[2], a, tl_row_start, tl_col_start, m);
     /* AA[3] = (A2,2) */
-     __submatrix_cpy (&mut a_submatrices[3], a, br_row_start, br_col_start, m);
+    __submatrix_cpy (&mut a_submatrices[3], a, br_row_start, br_col_start, m);
     /* AA[4] = (A1,1 + A1,2) */
     __submatrix_add (&mut a_submatrices[4], a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
     /* AA[5] = (A2,1 - A1,1) */
@@ -182,7 +193,7 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
      
      for i in 0..7 {
         intermediate.push(
-            __mult_strassen(
+            mult_transpose(
                 &mut Matrix::with_array(a_submatrices[i].to_vec(), m, m),
                 &mut Matrix::with_array(b_submatrices[i].to_vec(), m, m)
             )
@@ -192,8 +203,8 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     /* C1,1 = M1 + M4 - M5 + M7 */
     let mut m11 = intermediate[0].copy();
     m11.add(&intermediate[3])
-      .sub(&intermediate[4])
-      .add(&intermediate[6]);
+         .sub(&intermediate[4])
+         .add(&intermediate[6]);
 
     /* C1,2 = M3 + M5 */
     let mut m12 = intermediate[2].copy();
@@ -205,7 +216,9 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
     /* C2,2 = M1 - M2 + M3 + M6 */
     let mut m22 = intermediate[0].copy();
-    m22.sub(&intermediate[1]).add(&intermediate[2]).add(&intermediate[5]);
+    m22.sub(&intermediate[1])
+         .add(&intermediate[2])
+         .add(&intermediate[5]);
 
     return __reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
 }
@@ -281,79 +294,83 @@ __reconstitute (m11: &Matrix, m12: &Matrix,
 #[cfg(test)]
 mod tests {
 
-    use std::io::Write;
+    use rand::Rng;
 
     use super::*;
 
-    #[test]
-    fn test_mult_naive () {
+    fn test_multiplication_outputs(multipler: fn(&Matrix, &Matrix) -> Matrix) {
         let v1: Vec<i64> = vec![12, 8, 4, 3, 17, 14, 9, 8, 10];
         let v2: Vec<i64> = vec![5, 19, 3, 6, 15, 9, 7, 8, 16];
         let v3: Vec<i64> = vec![136, 380, 172, 215, 424, 386, 163, 371, 259];
 
         let a: Matrix = Matrix::with_array(v1, 3, 3);
         let b: Matrix = Matrix::with_array(v2, 3, 3);
-        let c: Matrix = a.mult(&b, mult_naive);
+        let c: Matrix = Matrix::with_array(v3, 3, 3);
 
-        assert!(c.array.eq(&v3));
+        assert!(a.mult(&b, multipler).eq(&c));
+
+        let v4: Vec<i64> = vec![7, 14, 15, 6, 4, 8, 12, 3, 14, 21, 6, 9, 13, 7, 6, 4];
+        let v5: Vec<i64> = vec![5, 7, 14, 2, 8, 16, 4, 9, 13, 6, 8, 4, 6, 3, 2, 4];
+        let v6: Vec<i64> = vec![378, 381, 286, 224, 258, 237, 190, 140, 370, 497, 346, 277, 223, 251, 266, 129];
+
+        let d: Matrix = Matrix::with_array(v4, 4, 4);
+        let e: Matrix = Matrix::with_array(v5, 4, 4);
+        let f: Matrix = Matrix::with_array(v6, 4, 4);
+
+        assert!(d.mult(&e, multipler).eq(&f));
+    }
+
+    #[test]
+    fn test_mult_naive () {
+        test_multiplication_outputs(mult_naive);
     }
 
     #[test]
     fn test_mult_transpose () {
-        let v1: Vec<i64> = vec![12, 8, 4, 3, 17, 14, 9, 8, 10];
-        let v2: Vec<i64> = vec![5, 19, 3, 6, 15, 9, 7, 8, 16];
-        let v3: Vec<i64> = vec![136, 380, 172, 215, 424, 386, 163, 371, 259];
-
-        let a: Matrix = Matrix::with_array(v1, 3, 3);
-        let b: Matrix = Matrix::with_array(v2, 3, 3);
-        let c: Matrix = a.mult(&b, mult_transpose);
-
-        assert!(c.array.eq(&v3));
+        test_multiplication_outputs(mult_transpose);
     }
 
     #[test]
     fn test_mult_strassen () {
-        let v1: Vec<i64> = vec![12, 8, 4, 3, 17, 14, 9, 8, 10];
-        let v2: Vec<i64> = vec![5, 19, 3, 6, 15, 9, 7, 8, 16];
-        let v3: Vec<i64> = vec![136, 380, 172, 215, 424, 386, 163, 371, 259];
+        unsafe {
+            TEST_STATE = true;
+        }
 
-        let a: Matrix = Matrix::with_array(v1, 3, 3);
-        let b: Matrix = Matrix::with_array(v2, 3, 3);
-        let c: Matrix = a.mult(&b, mult_transpose);
-
-        let d: Matrix = Matrix::with_array(v3, 3, 3);
-
-        assert!(c.eq(d));
+        test_multiplication_outputs(mult_strassen);
     }
 
     #[test]
     fn test_mult_aggregate () {
+        unsafe {
+            TEST_STATE = true;
+        }
+
         let cols = 123;
         let rows = 219;
         let n = rows * cols;
         let mut v1: Vec<i64> = Vec::with_capacity(n);
         let mut v2: Vec<i64> = Vec::with_capacity(n);
 
-        for i in 0..n {
-            v1.push(rand::random::<i64>() % 1000000);
-            v2.push(rand::random::<i64>() % 1000000);
+        let mut rng = thread_rng();
+
+        for _ in 0..n {
+            v1.push(rng.gen::<i64>() % 1000000);
+            v2.push(rng.gen::<i64>() % 1000000);
         }
 
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, cols, rows);
 
-        println!("computing naive");
-        io::stdout().lock().flush();
         let naive_result = a.mult(&b, mult_naive);
-        println!("computing transpose");
-        io::stdout().lock().flush();
         let transpose_result = a.mult(&b, mult_transpose);
-        println!("computing strassen");
-        io::stdout().lock().flush();
         let strassen_result = a.mult(&b, mult_strassen);
 
-        assert!(naive_result.eq(transpose_result));
-        assert!(naive_result.eq(strassen_result));
+        assert!(naive_result.eq(&transpose_result));
+        assert!(transpose_result.eq(&naive_result));
+        assert!(naive_result.eq(&strassen_result));
+        assert!(strassen_result.eq(&naive_result));
+        assert!(transpose_result.eq(&strassen_result));
+        assert!(strassen_result.eq(&transpose_result));
     }
 
     #[test]
@@ -458,6 +475,6 @@ mod tests {
 
         let b = __reconstitute (&m11, &m12, &m21, &m22, 2, 4);
 
-        assert!(a.eq(b));
+        assert!(a.eq(&b));
     }
 }

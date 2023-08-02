@@ -44,7 +44,10 @@ impl Matrix {
     }
 
     pub fn at (&self, i: usize, j: usize) -> i64 {
-        return self.array[i * self.cols + j];
+        // return self.array[i * self.cols + j];
+        unsafe {
+            return *self.array.get_unchecked(i * self.cols + j);
+        }
     }
 
     pub fn is_square (&self) -> bool {
@@ -75,7 +78,7 @@ impl Matrix {
         return self;
     }
 
-    pub fn eq (&self, b: Matrix) -> bool {
+    pub fn eq (&self, b: &Matrix) -> bool {
         if self.rows == b.rows && self.cols == b.cols {
             for i in 0..self.n {
                 if self.array[i] != b.array[i] {
@@ -130,7 +133,7 @@ impl Matrix {
      */
     pub fn reduce (&self, rows: usize, cols: usize) -> Matrix {
 
-        println!("reducing from [{}, {}] to [{}, {}]", self.rows, self.cols, rows, cols);
+        // println!("reducing from [{}, {}] to [{}, {}]", self.rows, self.cols, rows, cols);
 
         if rows > self.rows || cols > self.cols {
             panic!("Tried to reduce self to larger dimensions");
@@ -183,7 +186,7 @@ mod tests {
         let a: Matrix = Matrix::with_array(v1, 2, 2);
         let b: Matrix = Matrix::with_array(v2, 2, 2);
 
-        assert!(a.eq(b));
+        assert!(a.eq(&b));
     }
     
     #[test]
@@ -198,7 +201,7 @@ mod tests {
         a.add(&b);
 
         assert!(a.array.eq(&v3));
-        assert!(a.eq(Matrix::with_array(v3, 2, 2)));
+        assert!(a.eq(&Matrix::with_array(v3, 2, 2)));
     }
 
     #[test]
@@ -213,7 +216,7 @@ mod tests {
         a.sub(&b);
 
         assert!(a.array.eq(&v3));
-        assert!(a.eq(Matrix::with_array(v3, 2, 2)));
+        assert!(a.eq(&Matrix::with_array(v3, 2, 2)));
     }
 
     #[test]
@@ -255,7 +258,7 @@ mod tests {
 
         let c = a.transpose();
 
-        assert!(c.eq(b));
+        assert!(c.eq(&b));
     }
 
     #[test]
@@ -269,7 +272,7 @@ mod tests {
 
         let c = a.transpose();
 
-        assert!(c.eq(b));
+        assert!(c.eq(&b));
     }
 
     #[test]
@@ -283,7 +286,7 @@ mod tests {
 
         let c = a.pad(rows);
 
-        assert!(c.eq(b));
+        assert!(c.eq(&b));
     }
 
     #[test]
@@ -297,7 +300,7 @@ mod tests {
 
         let c = a.pad(cols);
 
-        assert!(c.eq(b));
+        assert!(c.eq(&b));
     }
 
     #[test]
@@ -309,7 +312,7 @@ mod tests {
 
         let c = a.pad(1);
 
-        assert!(c.eq(a));
+        assert!(c.eq(&a));
     }
 
     #[test]
@@ -325,6 +328,6 @@ mod tests {
 
         println!("reduced C: {}", c);
 
-        assert!(c.eq(b));
+        assert!(c.eq(&b));
     }
 }
