@@ -22,44 +22,56 @@ record_trial (a: &Matrix, b: &Matrix,
 fn 
 time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
     let mut rng = thread_rng();
-    let mut naive_accumulator:u128 = 0;
-    let mut transpose_accumulator:u128 = 0;
-    let mut strassen_accumulator:u128 = 0;
+    let mut skip_naive = false;
 
-    println!("running trials with bounds between [{}->{}, {}->{}]", lower, lower * factor, upper, upper * factor);
+    println!("running {} groups of {} trials with bounds between [{}->{}, {}->{}]", factor, trials, lower, lower * factor, upper, upper * factor);
 
     let mut timer = Timer::new();
+
+    println!("x y nxn naive transpose strassen");
 
     for i in 1..(factor + 1) {
         let lower_bound:usize = i * lower;
         let upper_bound:usize = i * upper;
 
-        // println!("starting 100 trials with sizes between [{}, {}]", lower_bound, upper_bound);
+        let mut naive_accumulator:u128 = 0;
+        let mut transpose_accumulator:u128 = 0;
+        let mut strassen_accumulator:u128 = 0;
 
+        let x: usize = rng.gen_range(lower_bound..(upper_bound + 1));
+        let y: usize = rng.gen_range(lower_bound..(upper_bound + 1));
+
+        let mut v1:Vec<f64> = Vec::with_capacity((x * y) as usize);
+        let mut v2:Vec<f64> = Vec::with_capacity((x * y) as usize);
+
+        for _ in 0..(x * y) {
+            v1.push(rng.gen_range(0.0..1000000.0));
+            v2.push(rng.gen_range(0.0..1000000.0));
+        }
+
+        let a = Matrix::with_array(v1, x, y);
+        let b = Matrix::with_array(v2, y, x);
+
+        // Run the timed tests
         for _ in 0..trials {
-            let rows:usize = rng.gen_range(lower_bound..(upper_bound + 1));
-            let cols:usize = rng.gen_range(lower_bound..(upper_bound + 1));
-
-            let mut v1:Vec<i64> = Vec::with_capacity((rows * cols) as usize);
-            let mut v2:Vec<i64> = Vec::with_capacity((rows * cols) as usize);
-            for _ in 0..(rows * cols) {
-                v1.push(rng.gen_range(0..1000000));
-                v2.push(rng.gen_range(0..1000000));
+            if !skip_naive {
+                naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
             }
 
-            let a = Matrix::with_array(v1, rows as usize, cols as usize);
-            let b = Matrix::with_array(v2, cols as usize, rows as usize);
-
-            // naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
             transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
             strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
         }
 
         let d = trials as f64;
+        let naive_time = (naive_accumulator as f64) / d;
 
-        println!("average times[{}, {}]\tn:{:.2}  t:{:.2}  s:{:.2}", lower_bound, upper_bound,
+        println!("{} {} {} {:.2} {:.2} {:.2}", x, y, x * y,
           (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
             (strassen_accumulator as f64) / d);
+
+        // if naive_time > 90000.0 {
+        //     skip_naive = true;
+        // }
     }
 }
 
@@ -112,8 +124,6 @@ main () {
         Some(trials_str) => trials_str.parse().unwrap(),
         _ => default_trials
     };
-
-    println!("args: lower {} upper {} factor {} trials {}", lower, upper, factor, trials);
 
     time_multiplication(lower, upper, factor, trials);
 }

@@ -51,7 +51,7 @@ namespace strassen
         
         T *C = (T *) malloc (m * m * sizeof (T));
         const T *a_row = NULL;
-        
+
         for (size_t i = 0; i < m; i++)
           {
             im = i * m;
@@ -63,7 +63,7 @@ namespace strassen
                 
                 for (size_t k = 0; k < n; k++)
                   {
-                    t += (a_row[k] * B[(k * brows) + j]);
+                    t += (a_row[k] * B[(k * bcols) + j]);
                   }
 
                 C[im++] = t;
@@ -73,7 +73,10 @@ namespace strassen
           return C;
       }
     else
-      arows = 0;
+      {
+        fprintf (stderr, "a.rows %lu != b.cols%lu\n", arows, bcols);
+        exit (1);
+      }
 
     return NULL;
   }

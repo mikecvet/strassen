@@ -4,18 +4,22 @@ use std::io;
 
 static mut TEST_STATE:bool = false;
 
+/**
+ * Naive multiplication algorithm. O(n^3).
+ * Panics if matrices `a` and `b` are of incompatbile dimensions.
+ */
 pub fn 
 mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
 
-        let mut c: Vec<i64> = Vec::with_capacity(m * m);
+        let mut c: Vec<f64> = Vec::with_capacity(m * m);
 
         for i in 0..m {
             for j in 0..m {
 
-                let mut sum:i64 = 0;
+                let mut sum:f64 = 0.0;
                 for k in 0..n {
                     sum += a.at(i, k) * b.at(k, j);
                 }
@@ -30,21 +34,23 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
     }
 }
 
+/**
+ * Variant of the naive multiplication algorithm, which uses the transpose of `b`, resuting in better memory locality performance characteristics. Still O(n^3).
+ * Panics if matrices `a` and `b` are of incompatbile dimensions.
+ */
 pub fn 
 mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
-    // println!("t: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
-
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
 
         let t = b.transpose();
-        let mut c: Vec<i64> = Vec::with_capacity(m * m);
+        let mut c: Vec<f64> = Vec::with_capacity(m * m);
 
         for i in 0..m {
             for j in 0..m {
 
-                let mut sum:i64 = 0;
+                let mut sum:f64 = 0.0;
                 for k in 0..n {
                     sum += a.at(i, k) * t.at(j, k);
                 }
@@ -59,12 +65,24 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
     }
 }
 
+/**
+ * Strassen algorithm. See https://en.wikipedia.org/wiki/Strassen_algorithm
+ * Breaks the provided matrices down into 7 smaller submatrices for multiplication, which results in 
+ * smaller asymptotic complexity of around O(n^2.8), at the expense of a higher scalar constant due to the extra work required.
+ * Falls back to the transpose naive multiplication method if row and column dimensions are 64 or less.
+ * Recurses as input matrices are broken down and this algorithm is run further on those submatrices.
+ * Panics if matrices `a` and `b` are of incompatbile dimensions.
+ */
 pub fn
 mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
-    // println!("s: input dimensions: a[{}, {}] b[{}, {}]", a.rows, a.cols, b.rows, b.cols);
+    if a.rows != b.cols {
+        panic!("Matrix sizes do not match");
+    }
+
     let mut max_dimension = a.rows;
 
+    // Find the largest row or column dimension across `a` and `b`
     if a.cols >= a.rows && a.cols >= b.cols {
         max_dimension = a.cols;
     } else if b.rows >= b.cols && b.rows >= a.rows {
@@ -73,29 +91,41 @@ mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
         max_dimension = b.cols;
     }
 
+    // If the largest dimension is odd, we'll add one and then pad the matrix to make it
+    // an even number of rows and columns
     if max_dimension % 2 == 1 {
         max_dimension += 1;
     }
 
     if a.is_square() && b.is_square() && a.rows == max_dimension {
-        return __mult_strassen(&a, &b);
+        // The matrices are square; proceed
+        return _mult_strassen(&a, &b);
     } else {
-        return __mult_strassen(
+        // Pad `a` and `b` to `max_dimension` and pass to underlying function `_mult_strassen`. Strip out
+        // extra padded rows and columns after that operation is complete.
+        return _mult_strassen(
             &a.pad(max_dimension), 
             &b.pad(max_dimension)
         ).reduce(a.rows, a.rows);
     }
 }
 
+/**
+ * Inner Strassen algorithm logic. 
+ */
 fn
-__mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
+_mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
     unsafe {
+        // Ugly hack for enabling recursion testing in unit tests.
+        // If not test state, fall back to transpose matrix multiplication if 
+        // input Matrix rows and columns are 64 or less.
         if (!TEST_STATE && a.rows <= 64) || (TEST_STATE && a.rows <= 2) {
             return mult_transpose(a, b);
         }
     }
 
+    /* This will be the row and column size of the submatrices */
     let m = a.rows / 2;
      
     /* Top left submatrix */
@@ -114,6 +144,7 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     let br_row_start = m;
     let br_col_start = m;
 
+    /* Vectors for 7 submatrices of `a` */
     let mut aa1 = Vec::with_capacity(m * m);
     let mut aa2 = Vec::with_capacity(m * m);
     let mut aa3 = Vec::with_capacity(m * m);
@@ -122,6 +153,7 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     let mut aa6 = Vec::with_capacity(m * m);
     let mut aa7 = Vec::with_capacity(m * m);
 
+    /* Vectors for 7 submatrices of `b` */
     let mut bb1 = Vec::with_capacity(m * m);
     let mut bb2 = Vec::with_capacity(m * m);
     let mut bb3 = Vec::with_capacity(m * m);
@@ -129,6 +161,38 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     let mut bb5 = Vec::with_capacity(m * m);
     let mut bb6 = Vec::with_capacity(m * m);
     let mut bb7 = Vec::with_capacity(m * m);
+
+    /* Initializes submatrices of `a` based on its quadrants, the manner described below */
+
+    /* AA[0] = (A1,1 + A2,2) */
+    _submatrix_add (&mut aa1, a, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
+    /* AA[1] = (A2,1 + A2,2) */
+    _submatrix_add (&mut aa2, a, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
+    /* AA[2] = (A1,1) */
+    _submatrix_cpy (&mut aa3, a, tl_row_start, tl_col_start, m);
+    /* AA[3] = (A2,2) */
+    _submatrix_cpy (&mut aa4, a, br_row_start, br_col_start, m);
+    /* AA[4] = (A1,1 + A1,2) */
+    _submatrix_add (&mut aa5, a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
+    /* AA[5] = (A2,1 - A1,1) */
+    _submatrix_sub (&mut aa6, a, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
+    /* AA[6] = (A1,2 - A2,2) */
+    _submatrix_sub (&mut aa7, a, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
+
+    /* BB[0] = (B1,1 + B2,2) */
+    _submatrix_add (&mut bb1, b, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
+    /* BB[1] = (B1,1) */
+    _submatrix_cpy (&mut bb2, b, tl_row_start, tl_col_start, m);
+    /* BB[2] = (B1,2 - B2,2) */
+    _submatrix_sub (&mut bb3, b, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
+    /* BB[3] = (B2,1 - B1,1) */
+    _submatrix_sub (&mut bb4, b, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
+    /* BB[4] = (B2,2) */
+    _submatrix_cpy (&mut bb5, b, br_row_start, br_col_start, m);
+    /* BB[5] = (B1,1 + B1,2) */
+    _submatrix_add (&mut bb6, b, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m); 
+    /* BB[6] = (B2,1 + B2,2) */
+    _submatrix_add (&mut bb7, b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
 
     /*
      * The output matrix C is expressed in terms of the block matrices M1..M7
@@ -147,37 +211,10 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
      * M5 = AA[4] * BB[4] = (A1,1 + A1,2)(B2,2)
      * M6 = AA[5] * BB[5] = (A2,1 - A1,1)(B1,1 + B1,2)
      * M7 = AA[6] * BB[6] = (A1,2 - A2,2)(B2,1 + B2,2)
+     * 
+     * The following operations each recurse further, passing their respective submatrices into the 
+     * main `mult_strassen` function above.
      */
-
-    /* AA[0] = (A1,1 + A2,2) */
-    __submatrix_add (&mut aa1, a, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
-    /* AA[1] = (A2,1 + A2,2) */
-    __submatrix_add (&mut aa2, a, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
-    /* AA[2] = (A1,1) */
-    __submatrix_cpy (&mut aa3, a, tl_row_start, tl_col_start, m);
-    /* AA[3] = (A2,2) */
-    __submatrix_cpy (&mut aa4, a, br_row_start, br_col_start, m);
-    /* AA[4] = (A1,1 + A1,2) */
-    __submatrix_add (&mut aa5, a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
-    /* AA[5] = (A2,1 - A1,1) */
-    __submatrix_sub (&mut aa6, a, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
-    /* AA[6] = (A1,2 - A2,2) */
-    __submatrix_sub (&mut aa7, a, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
-
-    /* BB[0] = (B1,1 + B2,2) */
-    __submatrix_add (&mut bb1, b, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
-    /* BB[1] = (B1,1) */
-    __submatrix_cpy (&mut bb2, b, tl_row_start, tl_col_start, m);
-    /* BB[2] = (B1,2 - B2,2) */
-    __submatrix_sub (&mut bb3, b, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
-    /* BB[3] = (B2,1 - B1,1) */
-    __submatrix_sub (&mut bb4, b, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
-    /* BB[4] = (B2,2) */
-    __submatrix_cpy (&mut bb5, b, br_row_start, br_col_start, m);
-    /* BB[5] = (B1,1 + B1,2) */
-    __submatrix_add (&mut bb6, b, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m); 
-    /* BB[6] = (B2,1 + B2,2) */
-    __submatrix_add (&mut bb7, b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
      
     let mut m1 = mult_strassen(
         &mut Matrix::with_array(aa1, m, m),
@@ -226,17 +263,22 @@ __mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     /* C2,2 = M1 - M2 + M3 + M6 */
     let m22 = m1.sub(&m2).add(&m3).add(&m6);
 
-    return __reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
+    /* Return a single matrix composing each of these four matrices as quadrants */
+    return _reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
 }
 
+/**
+ * Adds the two specified submatrices of `a` into `c`, using the provided quadrant offsets.
+ * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
+ * Similarly for the `b` values.
+ * Quadrants have `m` rows and columns.
+ */
 fn 
-__submatrix_add (c: &mut Vec<i64>, a: &Matrix, 
+_submatrix_add (c: &mut Vec<f64>, a: &Matrix, 
                 a_row_start: usize, a_col_start: usize, 
                 b_row_start: usize, b_col_start: usize,
                 m: usize) {
-    
-    // println!("A: {}", a);
-    // println!("__submatrix_add: a_row: {} a_col: {} b_row: {} b_col: {} m: {}", a_row_start, a_col_start, b_row_start, b_col_start, m);
+
     for i in 0..m {
         for j in 0..m {
             c.push(
@@ -247,8 +289,14 @@ __submatrix_add (c: &mut Vec<i64>, a: &Matrix,
     }
 }
 
+/**
+ * Subtracts the two specified submatrices of `a` into `c`, using the provided quadrant offsets.
+ * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
+ * Similarly for the `b` values.
+ * Quadrants have `m` rows and columns.
+ */
 fn 
-__submatrix_sub (c: &mut Vec<i64>, a: &Matrix, 
+_submatrix_sub (c: &mut Vec<f64>, a: &Matrix, 
                 a_row_start: usize, a_col_start: usize, 
                 b_row_start: usize, b_col_start: usize,
                 m: usize) {
@@ -263,8 +311,13 @@ __submatrix_sub (c: &mut Vec<i64>, a: &Matrix,
     }
 }
 
+/**
+ * Copies the specified submatrix of `a` into `c`, using the provided quadrant offsets.
+ * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
+ * Quadrants have `m` rows and columns.
+ */
 fn 
-__submatrix_cpy (c: &mut Vec<i64>, a: &Matrix, 
+_submatrix_cpy (c: &mut Vec<f64>, a: &Matrix, 
                 a_row_start: usize, a_col_start: usize, 
                 m: usize) {
     
@@ -274,12 +327,17 @@ __submatrix_cpy (c: &mut Vec<i64>, a: &Matrix,
     }
 }
 
+/**
+ * Reconstitutes a large matrix composed of the four provided matrices, composing 
+ * them as quadrants in a larger matrix.
+ * `m11` refers to `M(1,1)` for example.
+ */
 fn 
-__reconstitute (m11: &Matrix, m12: &Matrix, 
-                m21: &Matrix, m22: &Matrix, 
-                m: usize, n: usize) -> Matrix {
+_reconstitute (m11: &Matrix, m12: &Matrix, 
+               m21: &Matrix, m22: &Matrix, 
+               m: usize, n: usize) -> Matrix {
     
-    let mut v:Vec<i64> = Vec::with_capacity(n * n);
+    let mut v:Vec<f64> = Vec::with_capacity(n * n);
     let mut indx: usize;
 
     for i in 0..m {
@@ -305,9 +363,9 @@ mod tests {
     use super::*;
 
     fn test_multiplication_outputs(multipler: fn(&Matrix, &Matrix) -> Matrix) {
-        let v1: Vec<i64> = vec![12, 8, 4, 3, 17, 14, 9, 8, 10];
-        let v2: Vec<i64> = vec![5, 19, 3, 6, 15, 9, 7, 8, 16];
-        let v3: Vec<i64> = vec![136, 380, 172, 215, 424, 386, 163, 371, 259];
+        let v1: Vec<f64> = vec![12.0, 8.0, 4.0, 3.0, 17.0, 14.0, 9.0, 8.0, 10.0];
+        let v2: Vec<f64> = vec![5.0, 19.0, 3.0, 6.0, 15.0, 9.0, 7.0, 8.0, 16.0];
+        let v3: Vec<f64> = vec![136.0, 380.0, 172.0, 215.0, 424.0, 386.0, 163.0, 371.0, 259.0];
 
         let a: Matrix = Matrix::with_array(v1, 3, 3);
         let b: Matrix = Matrix::with_array(v2, 3, 3);
@@ -315,9 +373,9 @@ mod tests {
 
         assert!(a.mult(&b, multipler).eq(&c));
 
-        let v4: Vec<i64> = vec![7, 14, 15, 6, 4, 8, 12, 3, 14, 21, 6, 9, 13, 7, 6, 4];
-        let v5: Vec<i64> = vec![5, 7, 14, 2, 8, 16, 4, 9, 13, 6, 8, 4, 6, 3, 2, 4];
-        let v6: Vec<i64> = vec![378, 381, 286, 224, 258, 237, 190, 140, 370, 497, 346, 277, 223, 251, 266, 129];
+        let v4: Vec<f64> = vec![7.0, 14.0, 15.0, 6.0, 4.0, 8.0, 12.0, 3.0, 14.0, 21.0, 6.0, 9.0, 13.0, 7.0, 6.0, 4.0];
+        let v5: Vec<f64> = vec![5.0, 7.0, 14.0, 2.0, 8.0, 16.0, 4.0, 9.0, 13.0, 6.0, 8.0, 4.0, 6.0, 3.0, 2.0, 4.0];
+        let v6: Vec<f64> = vec![378.0, 381.0, 286.0, 224.0, 258.0, 237.0, 190.0, 140.0, 370.0, 497.0, 346.0, 277.0, 223.0, 251.0, 266.0, 129.0];
 
         let d: Matrix = Matrix::with_array(v4, 4, 4);
         let e: Matrix = Matrix::with_array(v5, 4, 4);
@@ -354,14 +412,14 @@ mod tests {
         let cols = 123;
         let rows = 219;
         let n = rows * cols;
-        let mut v1: Vec<i64> = Vec::with_capacity(n);
-        let mut v2: Vec<i64> = Vec::with_capacity(n);
+        let mut v1: Vec<f64> = Vec::with_capacity(n);
+        let mut v2: Vec<f64> = Vec::with_capacity(n);
 
         let mut rng = thread_rng();
 
         for _ in 0..n {
-            v1.push(rng.gen::<i64>() % 1000000);
-            v2.push(rng.gen::<i64>() % 1000000);
+            v1.push(rng.gen::<f64>() % 1000000.0);
+            v2.push(rng.gen::<f64>() % 1000000.0);
         }
 
         let a: Matrix = Matrix::with_array(v1, rows, cols);
@@ -392,12 +450,12 @@ mod tests {
          * 
          * Should correctly add the top-left 2x2 and bottom-right 2x2 subarrays
          */
-        let v1: Vec<i64> = vec![1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 10, 10, 3, 3, 10, 10];
-        let mut v2: Vec<i64> = Vec::with_capacity(4);
-        let v3: Vec<i64> = vec![11, 11, 11, 11];
+        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
+        let mut v2: Vec<f64> = Vec::with_capacity(4);
+        let v3: Vec<f64> = vec![11.0, 11.0, 11.0, 11.0];
         let a: Matrix = Matrix::with_array(v1, 4, 4);
 
-        __submatrix_add (&mut v2, &a, 0, 0, 2, 2, 2);
+        _submatrix_add (&mut v2, &a, 0, 0, 2, 2, 2);
 
         assert!(v2.eq(&v3));
     }
@@ -415,12 +473,12 @@ mod tests {
          * 
          * Should correctly add the top-left 2x2 and bottom-right 2x2 subarrays
          */
-        let v1: Vec<i64> = vec![1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 10, 10, 3, 3, 10, 10];
-        let mut v2: Vec<i64> = Vec::with_capacity(4);
-        let v3: Vec<i64> = vec![9, 9, 9, 9];
+        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
+        let mut v2: Vec<f64> = Vec::with_capacity(4);
+        let v3: Vec<f64> = vec![9.0, 9.0, 9.0, 9.0];
         let a: Matrix = Matrix::with_array(v1, 4, 4);
 
-        __submatrix_sub (&mut v2, &a, 2, 2, 0, 0, 2);
+        _submatrix_sub (&mut v2, &a, 2, 2, 0, 0, 2);
 
         assert!(v2.eq(&v3));
     }
@@ -438,15 +496,15 @@ mod tests {
          * 
          * Should correctly copy the top-left and bottom-right 2x2 subarrays into new vecs
          */
-        let v1: Vec<i64> = vec![1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 10, 10, 3, 3, 10, 10];
-        let mut v2: Vec<i64> = Vec::with_capacity(4);
-        let mut v3: Vec<i64> = Vec::with_capacity(4);
-        let v4: Vec<i64> = vec![1, 1, 1, 1];
-        let v5: Vec<i64> = vec![10, 10, 10, 10];
+        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
+        let mut v2: Vec<f64> = Vec::with_capacity(4);
+        let mut v3: Vec<f64> = Vec::with_capacity(4);
+        let v4: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
+        let v5: Vec<f64> = vec![10.0, 10.0, 10.0, 10.0];
         let a: Matrix = Matrix::with_array(v1, 4, 4);
 
-        __submatrix_cpy(&mut v2, &a, 0, 0, 2);
-        __submatrix_cpy(&mut v3, &a, 2, 2, 2);
+        _submatrix_cpy(&mut v2, &a, 0, 0, 2);
+        _submatrix_cpy(&mut v3, &a, 2, 2, 2);
 
         assert!(v2.eq(&v4));
         assert!(v3.eq(&v5));
@@ -473,13 +531,13 @@ mod tests {
          * | 3 3 10 10|
          * -          -
          */
-        let m11 = Matrix::with_array(vec![1, 1, 1, 1], 2, 2);
-        let m12 = Matrix::with_array(vec![2, 2, 2, 2], 2, 2);
-        let m21 = Matrix::with_array(vec![3, 3, 3, 3], 2, 2);
-        let m22 = Matrix::with_array(vec![10, 10, 10, 10], 2, 2);
-        let a = Matrix::with_array(vec![1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 10, 10, 3, 3, 10, 10], 4, 4);
+        let m11 = Matrix::with_array(vec![1.0, 1.0, 1.0, 1.0], 2, 2);
+        let m12 = Matrix::with_array(vec![2.0, 2.0, 2.0, 2.0], 2, 2);
+        let m21 = Matrix::with_array(vec![3.0, 3.0, 3.0, 3.0], 2, 2);
+        let m22 = Matrix::with_array(vec![10.0, 10.0, 10.0, 10.0], 2, 2);
+        let a = Matrix::with_array(vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0], 4, 4);
 
-        let b = __reconstitute (&m11, &m12, &m21, &m22, 2, 4);
+        let b = _reconstitute (&m11, &m12, &m21, &m22, 2, 4);
 
         assert!(a.eq(&b));
     }

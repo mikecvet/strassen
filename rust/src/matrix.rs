@@ -1,15 +1,32 @@
 use std::fmt;
 
+/* Floating-point comparison precision */
+const EPSILON:f64 = 0.000001;
+
+/**
+ * Basic matrix implementation. Metadata with a vector of f64 floats; matrix
+ * elements are indexed into the single vector.
+ */
 pub struct Matrix {
+    // Number of rows
     pub rows: usize,
+
+    // Number of columns
     pub cols: usize,
+
+    // Number of elements; rows * cols
     pub n: usize,
-    pub array: Vec<i64>
+
+    // Underlying matrix data
+    pub array: Vec<f64>
 }
 
 impl Matrix {
 
-    pub fn with_array (array: Vec<i64>, rows: usize, cols: usize) -> Matrix {
+    /**
+     * Initializes a new Matrix, wrapping the provided vector. Rows and cols must be nonzero.
+     */
+    pub fn with_array (array: Vec<f64>, rows: usize, cols: usize) -> Matrix {
         if rows == 0 || cols == 0 {
             panic!("cannot create a null matrix");
         }
@@ -22,39 +39,48 @@ impl Matrix {
         }
     }
 
+    /**
+     * Creates a new empty matrix of the specified dimensions; underlying vector is initialized to zeroes.
+     * Rows and cols must be nonzero.
+     */
     pub fn new (rows: usize, cols: usize) -> Matrix {
-        return Matrix::with_array(vec![0; rows * cols], rows, cols);
+        if rows == 0 || cols == 0 {
+            panic!("cannot create a null matrix");
+        }
+
+        return Matrix::with_array(vec![0.0; rows * cols], rows, cols);
     }
 
+    /**
+     * Returns a deep copy of this Matrix; clones underlying vector data as well.
+     */
     pub fn copy (&self) -> Matrix {
         return Matrix::with_array(self.array.to_vec(), self.rows, self.cols);
     }
 
-    pub fn random (&mut self, max_opt: Option<i64>) {
-        if max_opt.is_none() {
-            for i in 0..self.n {
-                self.array[i] = rand::random::<i64>();
-            }
-        } else {
-            let max = max_opt.unwrap();
-            for i in 0..self.n {
-                self.array[i] = rand::random::<i64>() % max + 1;
-            }
-        }
-    }
-
+    /**
+     * Returns the element at (i, j).
+     * Unsafe.
+     */
     #[inline]
-    pub fn at (&self, i: usize, j: usize) -> i64 {
-        unsafe {
+    pub fn at (&self, i: usize, j: usize) -> f64 {
+    //    return self.array[i * self.cols + j];
+         unsafe {
             return *self.array.get_unchecked(i * self.cols + j);
         }
     }
 
+    /**
+     * Returns true if the number of rows in this Matrix equals the number of columns.
+     */
     #[inline]
     pub fn is_square (&self) -> bool {
         return self.rows == self.cols;
     }
 
+    /**
+     * Adds the contents of `b` to this Matrix, and returns self. Panics if `b` is not the same size as this Matrix.
+     */
     pub fn add (&mut self, b: &Matrix) -> &mut Matrix {
         if self.rows == b.rows && self.cols == b.cols {
             for i in 0..self.n {
@@ -67,10 +93,10 @@ impl Matrix {
         return self;
     }
 
+    /**
+     * Subtracts the contents of `b` from this Matrix, and returns self. Panics if `b` is not the same size as this Matrix.
+     */
     pub fn sub (&mut self, b: &Matrix) -> &mut Matrix {
-        // println!("subtracting [{}, {} | {}] from [{}, {} | {}]", b.rows, b.cols, b.n, self.rows, self.cols, self.n);
-        // println!("self: {} b: {}", self, b);
-
         if self.rows == b.rows && self.cols == b.cols {
             for i in 0..self.n {
                 self.array[i] -= b.array[i];
@@ -82,11 +108,16 @@ impl Matrix {
         return self;
     }
 
+    /**
+     * Returns true if all elements of `b` are equal to all elements of this Matrix, subject to a difference of value of `EPSILON` or greater. 
+     * Panics if `b` is not the same size as this Matrix.
+     */
     pub fn eq (&self, b: &Matrix) -> bool {
         if self.rows == b.rows && self.cols == b.cols {
             for i in 0..self.n {
-                if self.array[i] != b.array[i] {
-                    return false
+                let delta = (self.array[i] - b.array[i]).abs();
+                if delta > EPSILON {
+                    return false;
                 }
             }
 
@@ -97,31 +128,34 @@ impl Matrix {
     }
 
     /**
-     * Returns a new matrix with the contents of this matrix copied into it. If the provided parameter 'n' is
+     * Returns a new Matrix with the contents of this Matrix copied into it. If the provided parameter `n` is
      * smaller or equal to the existing number of rows and columns of this matrix, a copy of this matrix
      * is returned.
      * 
-     * Otherwise, new a square n x n matrix is returned, with any new rows or columns filled with zeroes.
+     * Otherwise, new a square n x n Matrix is returned, with any added rows or columns filled with zeroes.
      */
     pub fn pad (&self, n: usize) -> Matrix {
         if n <= self.rows && n <= self.cols {
             return self.copy();
         } else {
-            let mut v:Vec<i64> = Vec::with_capacity(n * n);
+            // Initialize new vector with expected capacity
+            let mut v:Vec<f64> = Vec::with_capacity(n * n);
 
             for i in 0..self.rows {
                 for j in 0..self.cols {
                     v.push(self.at(i, j));
                 }
 
+                // These are additional, padded columns
                 for _ in self.cols..n {
-                    v.push(0);
+                    v.push(0.0);
                 }
             }
 
+            // These are additional, padded rows
             for _ in self.rows..n {
                 for _ in 0..n {
-                    v.push(0);
+                    v.push(0.0);
                 }
             }
 
@@ -134,16 +168,15 @@ impl Matrix {
      * number of rows and columns, starting from index [0, 0]. Typically used to remove
      * padding applied during the beginning of Strassen multiplication, to return a matrix
      * back to its original dimensions.
+     * Panics if the specified number of rows or columns are larger than this Matrix's number of rows or columns.
      */
     pub fn reduce (&self, rows: usize, cols: usize) -> Matrix {
-
-        // println!("reducing from [{}, {}] to [{}, {}]", self.rows, self.cols, rows, cols);
 
         if rows > self.rows || cols > self.cols {
             panic!("Tried to reduce self to larger dimensions");
         }
 
-        let mut v:Vec<i64> = Vec::with_capacity(rows * cols);
+        let mut v:Vec<f64> = Vec::with_capacity(rows * cols);
         for i in 0..rows {
             let indx = i * self.cols;
             v.extend_from_slice(&self.array[indx..(indx + cols)])
@@ -152,8 +185,11 @@ impl Matrix {
         return Matrix::with_array(v, rows, cols);
     }
 
+    /**
+     * Returns a new Matrix containing the transpose of this Matrix.
+     */
     pub fn transpose (&self) -> Matrix {
-        let mut v:Vec<i64> = Vec::with_capacity(self.n);
+        let mut v:Vec<f64> = Vec::with_capacity(self.n);
 
         for i in 0..self.cols {
             for j in 0..self.rows {
@@ -164,12 +200,18 @@ impl Matrix {
         return Matrix::with_array(v, self.cols, self.rows)
     }
 
-    pub fn mult (&self, matrix: &Matrix, multipler: fn(&Matrix, &Matrix) -> Matrix) -> Matrix {
-        return multipler(self, matrix);
+    /**
+     * Multiplies this Matrix by `b`, using the provided `multiplier` function.
+     */
+    pub fn mult (&self, b: &Matrix, multipler: fn(&Matrix, &Matrix) -> Matrix) -> Matrix {
+        return multipler(self, b);
     }
 
 }
 
+/**
+ * Pretty-printing for the Matrix struct.
+ */
 impl fmt::Display for Matrix {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
         let array_string = self.array.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
@@ -184,8 +226,8 @@ mod tests {
 
     #[test]
     fn test_eq () {
-        let v1: Vec<i64> = vec![1, 2, 3, 4];
-        let v2: Vec<i64> = vec![1, 2, 3, 4];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let v2: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
 
         let a: Matrix = Matrix::with_array(v1, 2, 2);
         let b: Matrix = Matrix::with_array(v2, 2, 2);
@@ -195,9 +237,9 @@ mod tests {
     
     #[test]
     fn test_add () {
-        let v1: Vec<i64> = vec![1, 2, 3, 4];
-        let v2: Vec<i64> = vec![9, 8, 7, 6];
-        let v3: Vec<i64> = vec![10, 10, 10, 10];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let v2: Vec<f64> = vec![9.0, 8.0, 7.0, 6.0];
+        let v3: Vec<f64> = vec![10.0, 10.0, 10.0, 10.0];
 
         let mut a: Matrix = Matrix::with_array(v1, 2, 2);
         let b: Matrix = Matrix::with_array(v2, 2, 2);
@@ -210,9 +252,9 @@ mod tests {
 
     #[test]
     fn test_sub () {
-        let v1: Vec<i64> = vec![10, 10, 10, 10];
-        let v2: Vec<i64> = vec![6, 7, 8, 9];
-        let v3: Vec<i64> = vec![4, 3, 2, 1];
+        let v1: Vec<f64> = vec![10.0, 10.0, 10.0, 10.0];
+        let v2: Vec<f64> = vec![6.0, 7.0, 8.0, 9.0];
+        let v3: Vec<f64> = vec![4.0, 3.0, 2.0, 1.0];
 
         let mut a: Matrix = Matrix::with_array(v1, 2, 2);
         let b: Matrix = Matrix::with_array(v2, 2, 2);
@@ -227,23 +269,22 @@ mod tests {
     fn test_at () {
         let rows = 2;
         let cols = 6;
-        let v: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let v: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
         let a: Matrix = Matrix::with_array(v, rows, cols);
         let mut indx = 1;
 
         for i in 0..rows {
             for j in 0..cols {
-                assert!(a.at(i, j) == indx);
+                let delta = (a.at(i, j) - indx as f64).abs();
+                assert!(delta < 0.000001);
                 indx += 1;
             }
         }
-
-        assert!(indx == (a.n + 1) as i64);
     }
 
     #[test]
     fn test_is_square () {
-        let v: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let v: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0];
         let a: Matrix = Matrix::with_array(v.to_vec(), 2, 8);
         let b: Matrix = Matrix::with_array(v.to_vec(), 4, 4);
         
@@ -255,8 +296,8 @@ mod tests {
     fn test_transpose_1 () {
         let rows = 2;
         let cols = 6;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-        let v2: Vec<i64> = vec![1, 7, 2, 8, 3, 9, 4, 10, 5, 11, 6, 12];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        let v2: Vec<f64> = vec![1.0, 7.0, 2.0, 8.0, 3.0, 9.0, 4.0, 10.0, 5.0, 11.0, 6.0, 12.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, cols, rows);
 
@@ -269,8 +310,8 @@ mod tests {
     fn test_transpose_2 () {
         let rows = 3;
         let cols = 3;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let v2: Vec<i64> = vec![1, 4, 7, 2, 5, 8, 3, 6, 9];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let v2: Vec<f64> = vec![1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, cols, rows);
 
@@ -283,8 +324,8 @@ mod tests {
     fn test_pad_cols () {
         let rows = 5;
         let cols = 2;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let v2: Vec<i64> = vec![1, 2, 0, 0, 0, 3, 4, 0, 0, 0, 5, 6, 0 ,0, 0, 7, 8, 0, 0, 0, 9, 10, 0, 0, 0];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+        let v2: Vec<f64> = vec![1.0, 2.0, 0.0, 0.0, 0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 5.0, 6.0, 0.0 ,0.0, 0.0, 7.0, 8.0, 0.0, 0.0, 0.0, 9.0, 10.0, 0.0, 0.0, 0.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, 5, 5);
 
@@ -297,8 +338,8 @@ mod tests {
     fn test_pad_rows () {
         let rows = 2;
         let cols = 5;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let v2: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+        let v2: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, 5, 5);
 
@@ -311,7 +352,7 @@ mod tests {
     fn test_pad_none () {
         let rows = 2;
         let cols = 5;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
 
         let c = a.pad(1);
@@ -323,8 +364,8 @@ mod tests {
     fn test_reduce () {
         let rows = 5;
         let cols = 5;
-        let v1: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let v2: Vec<i64> = vec![1, 2, 3, 4, 6, 7, 8, 9];
+        let v1: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let v2: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 6.0, 7.0, 8.0, 9.0];
         let a: Matrix = Matrix::with_array(v1, rows, cols);
         let b: Matrix = Matrix::with_array(v2, 2, 4);
 

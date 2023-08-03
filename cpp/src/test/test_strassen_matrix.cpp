@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <execinfo.h>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
@@ -220,52 +221,64 @@ time_matrix_multipliers (size_t sz)
 }
 
 void
-time_full ()
+time_full (size_t lower, size_t upper, size_t factor, size_t trials)
 {
   bool b = false;
-  uint32_t trials = 16;
   double tmp;
   double avgsum = 0.0;
+
   strassen::timer t;
+  size_t naive_accumulator = 0;
+  size_t transpose_accumulator = 0;
+  size_t strassen_accumulator = 0;
 
-  strassen::matrix<int> m (1024, 1024);
-  strassen::matrix<int> n (1024, 1024);
+  printf ("nxn naive transpose strassen\n");
 
-  for (uint32_t i = 0; i < trials; i++)
-    {
-      m.random (177);
-      n.random (273);
-      
-      t.start ();
+  for (uint32_t i = 1; i < factor + 1; i++) {
 
-      m.mult (n);
-      m.add (n);
+    size_t lower_bound = i * lower;
+    size_t upper_bound = i * upper;
 
-      strassen::matrix<int> o (m);
-      b = (m == o);
+    int x = (rand () % lower_bound) + upper_bound;
+    int y = (rand () % lower_bound) + upper_bound;
 
-      strassen::matrix<int> p (512, 1024);
-      p.random ();
+    strassen::matrix<int> n (y, x);
 
-      m.mult (p);
-      m.sub (n);
-      n.mult (m);
-      m.mult (n);
+    n.random (1000000);
 
-      t.stop ();
-      
-      printf ("full test time [%u]: %lu.%0lu\n", i, t.secs(), t.usecs());
+    for (uint32_t j = 0; j < trials; j++)
+      {
+        strassen::matrix<int> m_nmm (x, y, new strassen::naive_matrix_multiplier<int> ());
+        strassen::matrix<int> m_tmm (x, y, new strassen::transpose_matrix_multiplier<int> ());
+        strassen::matrix<int> m_smm (x, y, new strassen::strassen_matrix_multiplier<int> ());
+        m_nmm.random (1000000);
+        m_tmm.random (1000000);
+        m_smm.random (1000000);
 
-      tmp = (double) t.usecs ();
-      tmp = tmp / 1000000;
-      tmp += (double) t.secs ();
-      avgsum += tmp;
+        t.start ();
+        m_nmm.mult (n);
+        t.stop ();
 
-      if (!b)
-	      fprintf (stderr, "matrices inequal!\n");
-    }
+        // Time in millis
+        naive_accumulator += t.secs() * 1000 + t.usecs() / 1000;
 
-  printf ("average time over %u trials: %lfs\n", trials, (avgsum / trials));
+        t.start ();
+        m_tmm.mult (n);
+        t.stop ();
+
+        // Time in millis
+        transpose_accumulator += t.secs() * 1000 + t.usecs() / 1000;
+
+        t.start ();
+        m_smm.mult (n);
+        t.stop ();
+
+        // Time in millis
+        strassen_accumulator += t.secs() * 1000 + t.usecs() / 1000;
+      }
+
+    printf ("%d %d %d %lu.0 %lu.0 %lu.0\n", x, y, x * y, naive_accumulator, transpose_accumulator, strassen_accumulator);
+  }
 }
 
 void
@@ -428,18 +441,32 @@ big_test (size_t start)
     }
 }
 
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 int
 main ()
 {
+  signal(SIGSEGV, handler);
   srand (time (NULL));
 
-  simple ();
+  //simple ();
   //test_matrix_multipliers ();
-  time_full ();
-  mult_test ();
+  time_full (50, 100, 50, 2);
+  //mult_test ();
 
   //13
-  big_test (40);
+  //big_test (40);
 
   return 0;
 }

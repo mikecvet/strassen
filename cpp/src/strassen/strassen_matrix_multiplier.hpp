@@ -508,17 +508,17 @@ namespace strassen
   strassen_matrix_multiplier<T>::__pad (const T *m, size_t rows, size_t cols, size_t n)
   {
     size_t in;
-    size_t ir;
+    size_t ic;
     T *M = (T *) malloc (n * n * sizeof (T));
     
     for (size_t i = 0; i < rows; i++)
       {
         in = i * n;
-        ir = i * rows;
+        ic = i * cols;
 
         for (size_t j = 0; j < cols; j++)
           {
-            M[in + j] = m[ir + j];
+            M[in + j] = m[ic + j];
           }
         
         for (size_t j = cols; j < n; j++)
