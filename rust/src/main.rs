@@ -52,9 +52,9 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
         // Run the timed tests
         for _ in 0..trials {
 
-        if !skip_naive {
-            naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
-        }
+            if !skip_naive {
+                naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
+            }
 
             transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
             strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
