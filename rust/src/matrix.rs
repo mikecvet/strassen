@@ -64,7 +64,6 @@ impl Matrix {
      */
     #[inline]
     pub fn at (&self, i: usize, j: usize) -> f64 {
-    //    return self.array[i * self.cols + j];
          unsafe {
             return *self.array.get_unchecked(i * self.cols + j);
         }
@@ -206,7 +205,6 @@ impl Matrix {
     pub fn mult (&self, b: &Matrix, multipler: fn(&Matrix, &Matrix) -> Matrix) -> Matrix {
         return multipler(self, b);
     }
-
 }
 
 /**

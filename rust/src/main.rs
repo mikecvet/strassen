@@ -1,6 +1,6 @@
 use clap::{arg, Command};
 use rand::{Rng, thread_rng};
-use std::{fs, io::Read};
+use std::thread;
 use strassen::{matrix::Matrix, timer::Timer, mult::mult_naive, mult::mult_strassen, mult::mult_transpose};
 use rayon::prelude::*;
 
@@ -31,15 +31,12 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
     println!("x y nxn naive transpose strassen");
 
     for i in 1..(factor + 1) {
-        let lower_bound:usize = i * lower;
-        let upper_bound:usize = i * upper;
+        let x: usize = i * lower;
+        let y: usize = i * upper;
 
         let mut naive_accumulator:u128 = 0;
         let mut transpose_accumulator:u128 = 0;
         let mut strassen_accumulator:u128 = 0;
-
-        let x: usize = rng.gen_range(lower_bound..(upper_bound + 1));
-        let y: usize = rng.gen_range(lower_bound..(upper_bound + 1));
 
         let mut v1:Vec<f64> = Vec::with_capacity((x * y) as usize);
         let mut v2:Vec<f64> = Vec::with_capacity((x * y) as usize);
@@ -54,9 +51,10 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
 
         // Run the timed tests
         for _ in 0..trials {
-            if !skip_naive {
-                naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
-            }
+
+        if !skip_naive {
+            naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
+        }
 
             transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
             strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
@@ -69,9 +67,9 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
           (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
             (strassen_accumulator as f64) / d);
 
-        // if naive_time > 90000.0 {
-        //     skip_naive = true;
-        // }
+        //if naive_time > 90000.0 {
+        //    skip_naive = true;
+       // }
     }
 }
 
