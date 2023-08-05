@@ -192,7 +192,6 @@ _mult_par_strassen (a: &Matrix, b: &Matrix, pool: &ThreadPool) -> Matrix {
      * The following operations each recurse further, passing their respective submatrices into the 
      * main `mult_strassen` function above.
      */
-
     let async_m1 = _par_run_strassen(aa1, bb1, m, pool);
     let async_m2 = _par_run_strassen(aa2, bb2, m, pool);
     let async_m3 = _par_run_strassen(aa3, bb3, m, pool);
@@ -201,8 +200,10 @@ _mult_par_strassen (a: &Matrix, b: &Matrix, pool: &ThreadPool) -> Matrix {
     let async_m6 = _par_run_strassen(aa6, bb6, m, pool);
     let async_m7 = _par_run_strassen(aa7, bb7, m, pool);
 
+    // Wait for threads
     pool.join();
 
+    // Extract worker thread results from ugly nested structs
     let mut m1 = Arc::try_unwrap(async_m1).ok().unwrap().into_inner().unwrap().unwrap();
     let m2 = Arc::try_unwrap(async_m2).ok().unwrap().into_inner().unwrap().unwrap();
     let m3 = Arc::try_unwrap(async_m3).ok().unwrap().into_inner().unwrap().unwrap();
@@ -227,6 +228,9 @@ _mult_par_strassen (a: &Matrix, b: &Matrix, pool: &ThreadPool) -> Matrix {
     return reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
 }
 
+/**
+ * Execute a recursive strassen multiplication of the given vectors.
+ */
 fn 
 _par_run_strassen(a: Vec<f64>, b: Vec<f64>, 
                   m: usize, pool: &ThreadPool) -> Arc<Mutex<Option<Matrix>>> {
@@ -234,6 +238,7 @@ _par_run_strassen(a: Vec<f64>, b: Vec<f64>,
     let m1_clone = Arc::clone(&m1);
      
     pool.execute(move|| { 
+        // Use non-parallel algorithm once we're in a working thread
         let result = mult_strassen(
             &mut Matrix::with_vector(a, m, m),
             &mut Matrix::with_vector(b, m, m)
