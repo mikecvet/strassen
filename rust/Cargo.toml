@@ -23,3 +23,5 @@ lto = "thin"
 colored = "2.0.4"
 clap = { version = "4.2.7", features = ["derive"] }
 rand = "0.8.5"
+rayon = "1.7.0"
+threadpool = "1.8.1"

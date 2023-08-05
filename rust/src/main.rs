@@ -1,6 +1,6 @@
 use clap::{arg, Command};
 use rand::{Rng, thread_rng};
-use strassen::{matrix::Matrix, timer::Timer, mult::mult_naive, mult::mult_strassen, mult::mult_transpose};
+use strassen::{matrix::Matrix, timer::Timer, mult::mult_naive, mult::mult_strassen, mult::mult_transpose, par_mult::mult_par_strassen};
 
 fn
 record_trial (a: &Matrix, b: &Matrix, 
@@ -34,6 +34,7 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
         let mut naive_accumulator:u128 = 0;
         let mut transpose_accumulator:u128 = 0;
         let mut strassen_accumulator:u128 = 0;
+        let mut par_strassen_accumulator:u128 = 0;
 
         let mut v1:Vec<f64> = Vec::with_capacity((x * y) as usize);
         let mut v2:Vec<f64> = Vec::with_capacity((x * y) as usize);
@@ -49,16 +50,19 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
         // Run the timed tests
         for _ in 0..trials {
 
-            naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
-            transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
-            strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
+            //naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
+            //transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
+            //strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
+            par_strassen_accumulator += record_trial(&a, &b, &mut timer, mult_par_strassen);
         }
 
         let d = trials as f64;
 
-        println!("{} {} {} {:.2} {:.2} {:.2}", x, y, x * y,
-          (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
-            (strassen_accumulator as f64) / d);
+       // println!("{} {} {} {:.2} {:.2} {:.2} {:.2}", x, y, x * y,
+       //   (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
+       //    (strassen_accumulator as f64) / d, (par_strassen_accumulator as f64) / d);
+
+        println!("{} {} {} {:.2}", x, y, x * y, (par_strassen_accumulator as f64) / d);
     }
 }
 

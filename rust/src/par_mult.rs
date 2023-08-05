@@ -1,45 +1,18 @@
 pub use crate::matrix::Matrix;
+pub use crate::mult::*;
 use rand::thread_rng;
-use std::io;
+use rayon::prelude::*;
+use threadpool::ThreadPool;
+use std::sync::{Arc, Mutex};
 
 static mut TEST_STATE:bool = false;
-
-/**
- * Naive multiplication algorithm. O(n^3).
- * Panics if matrices `a` and `b` are of incompatbile dimensions.
- */
-pub fn 
-mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
-    if a.rows == b.cols {
-        let m = a.rows;
-        let n = a.cols;
-
-        let mut c: Vec<f64> = Vec::with_capacity(m * m);
-
-        for i in 0..m {
-            for j in 0..m {
-
-                let mut sum:f64 = 0.0;
-                for k in 0..n {
-                    sum += a.at(i, k) * b.at(k, j);
-                }
-
-                c.push(sum);
-            }
-        }
-
-        return Matrix::with_vector(c, m, m);
-    } else {
-        panic!("Matrix sizes do not match");
-    }
-}
 
 /**
  * Variant of the naive multiplication algorithm, which uses the transpose of `b`, resuting in better memory locality performance characteristics. Still O(n^3).
  * Panics if matrices `a` and `b` are of incompatbile dimensions.
  */
 pub fn 
-mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
+mult_par_transpose (a: &Matrix, b: &Matrix) -> Matrix {
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
@@ -74,7 +47,7 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
  * Panics if matrices `a` and `b` are of incompatbile dimensions.
  */
 pub fn
-mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
+mult_par_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
     if a.rows != b.cols {
         panic!("Matrix sizes do not match");
@@ -97,24 +70,27 @@ mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
         max_dimension += 1;
     }
 
+    let pool = ThreadPool::new(7);
+
     if a.is_square() && b.is_square() && a.rows == max_dimension {
         // The matrices are square; proceed
-        return _mult_strassen(&a, &b);
+        return _mult_par_strassen(&a, &b, &pool);
     } else {
         // Pad `a` and `b` to `max_dimension` and pass to underlying function `_mult_strassen`. Strip out
         // extra padded rows and columns after that operation is complete.
-        return _mult_strassen(
+        return _mult_par_strassen(
             &a.pad(max_dimension), 
-            &b.pad(max_dimension)
+            &b.pad(max_dimension),
+            &pool
         ).reduce(a.rows, a.rows);
     }
 }
 
 /**
- * Inner Strassen algorithm logic. 
+ * Inner parallel Strassen algorithm logic. 
  */
 fn
-_mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
+_mult_par_strassen (a: &Matrix, b: &Matrix, pool: &ThreadPool) -> Matrix {
 
     unsafe {
         // Ugly hack for enabling recursion testing in unit tests.
@@ -217,41 +193,24 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
      * The following operations each recurse further, passing their respective submatrices into the 
      * main `mult_strassen` function above.
      */
-     
-    let mut m1 = mult_strassen(
-        &mut Matrix::with_vector(aa1, m, m),
-        &mut Matrix::with_vector(bb1, m, m)
-    );
 
-    let m2 = mult_strassen(
-        &mut Matrix::with_vector(aa2, m, m),
-        &mut Matrix::with_vector(bb2, m, m)
-    );
+    let async_m1 = _par_run_strassen(aa1, bb1, m, pool);
+    let async_m2 = _par_run_strassen(aa2, bb2, m, pool);
+    let async_m3 = _par_run_strassen(aa3, bb3, m, pool);
+    let async_m4 = _par_run_strassen(aa4, bb4, m, pool);
+    let async_m5 = _par_run_strassen(aa5, bb5, m, pool);
+    let async_m6 = _par_run_strassen(aa6, bb6, m, pool);
+    let async_m7 = _par_run_strassen(aa7, bb7, m, pool);
 
-    let m3 = mult_strassen(
-        &mut Matrix::with_vector(aa3, m, m),
-        &mut Matrix::with_vector(bb3, m, m)
-    );
+    pool.join();
 
-    let mut m4 = mult_strassen(
-        &mut Matrix::with_vector(aa4, m, m),
-        &mut Matrix::with_vector(bb4, m, m)
-    );
-
-    let mut m5 = mult_strassen(
-        &mut Matrix::with_vector(aa5, m, m),
-        &mut Matrix::with_vector(bb5, m, m)
-    );
-
-    let m6 = mult_strassen(
-        &mut Matrix::with_vector(aa6, m, m),
-        &mut Matrix::with_vector(bb6, m, m)
-    );
-
-    let mut m7 = mult_strassen(
-        &mut Matrix::with_vector(aa7, m, m),
-        &mut Matrix::with_vector(bb7, m, m)
-    );
+    let mut m1 = Arc::try_unwrap(async_m1).ok().unwrap().into_inner().unwrap().unwrap();
+    let m2 = Arc::try_unwrap(async_m2).ok().unwrap().into_inner().unwrap().unwrap();
+    let m3 = Arc::try_unwrap(async_m3).ok().unwrap().into_inner().unwrap().unwrap();
+    let mut m4 = Arc::try_unwrap(async_m4).ok().unwrap().into_inner().unwrap().unwrap();
+    let mut m5 = Arc::try_unwrap(async_m5).ok().unwrap().into_inner().unwrap().unwrap();
+    let m6 = Arc::try_unwrap(async_m6).ok().unwrap().into_inner().unwrap().unwrap();
+    let mut m7 = Arc::try_unwrap(async_m7).ok().unwrap().into_inner().unwrap().unwrap();
 
     /* C1,1 = M1 + M4 - M5 + M7 */
     let m11 = m7.sub(&m5).add(&m4).add(&m1);
@@ -269,92 +228,22 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     return reconstitute(&m11, &m12, &m21, &m22, m, a.rows);
 }
 
-/**
- * Adds the two specified submatrices of `a` into `c`, using the provided quadrant offsets.
- * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
- * Similarly for the `b` values.
- * Quadrants have `m` rows and columns.
- */
-pub fn 
-submatrix_add (c: &mut Vec<f64>, a: &Matrix, 
-                a_row_start: usize, a_col_start: usize, 
-                b_row_start: usize, b_col_start: usize,
-                m: usize) {
+fn 
+_par_run_strassen(a: Vec<f64>, b: Vec<f64>, 
+                  m: usize, pool: &ThreadPool) -> Arc<Mutex<Option<Matrix>>> {
+    let m1: Arc<Mutex<Option<Matrix>>> = Arc::new(Mutex::new(None));
+    let m1_clone = Arc::clone(&m1);
+     
+    pool.execute(move|| { 
+        let result = mult_strassen(
+            &mut Matrix::with_vector(a, m, m),
+            &mut Matrix::with_vector(b, m, m)
+        );
+        
+        *m1_clone.lock().unwrap() = Some(result);
+    });
 
-    for i in 0..m {
-        for j in 0..m {
-            c.push(
-                a.at(a_row_start + i, a_col_start + j) + 
-                a.at(b_row_start + i, b_col_start + j)
-            )
-        }
-    }
-}
-
-/**
- * Subtracts the two specified submatrices of `a` into `c`, using the provided quadrant offsets.
- * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
- * Similarly for the `b` values.
- * Quadrants have `m` rows and columns.
- */
-pub fn 
-submatrix_sub (c: &mut Vec<f64>, a: &Matrix, 
-                a_row_start: usize, a_col_start: usize, 
-                b_row_start: usize, b_col_start: usize,
-                m: usize) {
-    
-    for i in 0..m {
-        for j in 0..m {
-            c.push(
-                a.at(a_row_start + i, a_col_start + j) - 
-                a.at(b_row_start + i, b_col_start + j)
-            )
-        }
-    }
-}
-
-/**
- * Copies the specified submatrix of `a` into `c`, using the provided quadrant offsets.
- * `a_row_start` and `a_col_start` refer to row and column offsets into `a`, used to represent a matrix quadrant.
- * Quadrants have `m` rows and columns.
- */
-pub fn 
-submatrix_cpy (c: &mut Vec<f64>, a: &Matrix, 
-                a_row_start: usize, a_col_start: usize, 
-                m: usize) {
-    
-    for i in 0..m {
-        let indx = ((a_row_start + i) * a.cols) + a_col_start;
-        c.extend_from_slice(&a.elements[indx..(indx + m)]);
-    }
-}
-
-/**
- * Reconstitutes a large matrix composed of the four provided matrices, composing 
- * them as quadrants in a larger matrix.
- * `m11` refers to `M(1,1)` for example.
- */
-pub fn 
-reconstitute (m11: &Matrix, m12: &Matrix, 
-               m21: &Matrix, m22: &Matrix, 
-               m: usize, n: usize) -> Matrix {
-    
-    let mut v:Vec<f64> = Vec::with_capacity(n * n);
-    let mut indx: usize;
-
-    for i in 0..m {
-        indx = i * m;
-        v.extend_from_slice(&m11.elements[indx..(indx + m)]);
-        v.extend_from_slice(&m12.elements[indx..(indx + m)]);
-    }
-
-    for i in 0..m {
-        indx = i * m;
-        v.extend_from_slice(&m21.elements[indx..(indx + m)]);
-        v.extend_from_slice(&m22.elements[indx..(indx + m)]);
-    }
-
-    return Matrix::with_vector(v, n, n);
+    return m1;
 }
 
 #[cfg(test)]
@@ -387,26 +276,21 @@ mod tests {
     }
 
     #[test]
-    fn test_mult_naive () {
-        test_multiplication_outputs(mult_naive);
+    fn test_mult_par_transpose () {
+        test_multiplication_outputs(mult_par_transpose);
     }
 
     #[test]
-    fn test_mult_transpose () {
-        test_multiplication_outputs(mult_transpose);
-    }
-
-    #[test]
-    fn test_mult_strassen () {
+    fn test_mult_par_strassen () {
         unsafe {
             TEST_STATE = true;
         }
 
-        test_multiplication_outputs(mult_strassen);
+        test_multiplication_outputs(mult_par_strassen);
     }
 
     #[test]
-    fn test_mult_aggregate () {
+    fn test_mult_par_aggregate () {
         unsafe {
             TEST_STATE = true;
         }
@@ -427,120 +311,10 @@ mod tests {
         let a: Matrix = Matrix::with_vector(v1, rows, cols);
         let b: Matrix = Matrix::with_vector(v2, cols, rows);
 
-        let naive_result = a.mult(&b, mult_naive);
-        let transpose_result = a.mult(&b, mult_transpose);
-        let strassen_result = a.mult(&b, mult_strassen);
+        let transpose_par_result = a.mult(&b, mult_par_transpose);
+        let strassen_par_result = a.mult(&b, mult_par_strassen);
 
-        assert!(naive_result.eq(&transpose_result));
-        assert!(transpose_result.eq(&naive_result));
-        assert!(naive_result.eq(&strassen_result));
-        assert!(strassen_result.eq(&naive_result));
-        assert!(transpose_result.eq(&strassen_result));
-        assert!(strassen_result.eq(&transpose_result));
-    }
-
-    #[test]
-    fn test_submatrix_add () {
-        /*
-         * Given an input matrix
-         * -          -
-         * | 1 1 2  2 |
-         * | 1 1 2  2 |
-         * | 3 3 10 10|
-         * | 3 3 10 10|
-         * -          -
-         * 
-         * Should correctly add the top-left 2x2 and bottom-right 2x2 subarrays
-         */
-        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
-        let mut v2: Vec<f64> = Vec::with_capacity(4);
-        let v3: Vec<f64> = vec![11.0, 11.0, 11.0, 11.0];
-        let a: Matrix = Matrix::with_vector(v1, 4, 4);
-
-        submatrix_add (&mut v2, &a, 0, 0, 2, 2, 2);
-
-        assert!(v2.eq(&v3));
-    }
-
-    #[test]
-    fn test_submatrix_sub () {
-        /*
-         * Given an input matrix
-         * -          -
-         * | 1 1 2  2 |
-         * | 1 1 2  2 |
-         * | 3 3 10 10|
-         * | 3 3 10 10|
-         * -          -
-         * 
-         * Should correctly add the top-left 2x2 and bottom-right 2x2 subarrays
-         */
-        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
-        let mut v2: Vec<f64> = Vec::with_capacity(4);
-        let v3: Vec<f64> = vec![9.0, 9.0, 9.0, 9.0];
-        let a: Matrix = Matrix::with_vector(v1, 4, 4);
-
-        submatrix_sub (&mut v2, &a, 2, 2, 0, 0, 2);
-
-        assert!(v2.eq(&v3));
-    }
-
-    #[test]
-    fn test_submatrix_cpy () {
-        /*
-         * Given an input matrix
-         * -          -
-         * | 1 1 2  2 |
-         * | 1 1 2  2 |
-         * | 3 3 10 10|
-         * | 3 3 10 10|
-         * -          -
-         * 
-         * Should correctly copy the top-left and bottom-right 2x2 subarrays into new vecs
-         */
-        let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
-        let mut v2: Vec<f64> = Vec::with_capacity(4);
-        let mut v3: Vec<f64> = Vec::with_capacity(4);
-        let v4: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
-        let v5: Vec<f64> = vec![10.0, 10.0, 10.0, 10.0];
-        let a: Matrix = Matrix::with_vector(v1, 4, 4);
-
-        submatrix_cpy(&mut v2, &a, 0, 0, 2);
-        submatrix_cpy(&mut v3, &a, 2, 2, 2);
-
-        assert!(v2.eq(&v4));
-        assert!(v3.eq(&v5));
-    }
-
-    #[test]
-    fn test_reconstitute () {
-        /*
-         * Given 3 input submatrices representing M1,1 | M1,2 | M2,1 | M2,2
-         * -     - -      -
-         * | 1 1 | | 2  2 |
-         * | 1 1 | | 2  2 |
-         * -     - -      -
-         * -     - -       -
-         * | 3 3 | | 10 10 |
-         * | 3 3 | | 10 10 |
-         * -     - -       -
-         * 
-         * Should correctly reconstitute a 4x4 matrix as such:
-         * -          -
-         * | 1 1 2  2 |
-         * | 1 1 2  2 |
-         * | 3 3 10 10|
-         * | 3 3 10 10|
-         * -          -
-         */
-        let m11 = Matrix::with_vector(vec![1.0, 1.0, 1.0, 1.0], 2, 2);
-        let m12 = Matrix::with_vector(vec![2.0, 2.0, 2.0, 2.0], 2, 2);
-        let m21 = Matrix::with_vector(vec![3.0, 3.0, 3.0, 3.0], 2, 2);
-        let m22 = Matrix::with_vector(vec![10.0, 10.0, 10.0, 10.0], 2, 2);
-        let a = Matrix::with_vector(vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0], 4, 4);
-
-        let b = reconstitute (&m11, &m12, &m21, &m22, 2, 4);
-
-        assert!(a.eq(&b));
+        assert!(transpose_par_result.eq(&strassen_par_result));
+        assert!(strassen_par_result.eq(&transpose_par_result));
     }
 }

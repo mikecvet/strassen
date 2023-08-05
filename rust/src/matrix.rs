@@ -7,6 +7,7 @@ const EPSILON:f64 = 0.000001;
  * Basic matrix implementation. Metadata with a vector of f64 floats; matrix
  * elements are indexed into the single vector.
  */
+#[derive(Debug)]
 pub struct Matrix {
     // Number of rows
     pub rows: usize,
