@@ -28,7 +28,7 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
             }
         }
 
-        return Matrix::with_array(c, m, m);
+        return Matrix::with_vector(c, m, m);
     } else {
         panic!("Matrix sizes do not match");
     }
@@ -59,7 +59,7 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
             }
         }
 
-        return Matrix::with_array(c, m, m);
+        return Matrix::with_vector(c, m, m);
     } else {
         panic!("Matrix sizes do not match");
     }
@@ -164,34 +164,36 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
     /* Initializes submatrices of `a` based on its quadrants, the manner described below */
 
-    /* AA[0] = (A1,1 + A2,2) */
+    /* AA1 = (A1,1 + A2,2) */
     _submatrix_add (&mut aa1, a, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
-    /* AA[1] = (A2,1 + A2,2) */
+    /* AA2 = (A2,1 + A2,2) */
     _submatrix_add (&mut aa2, a, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
-    /* AA[2] = (A1,1) */
+    /* AA3 = (A1,1) */
     _submatrix_cpy (&mut aa3, a, tl_row_start, tl_col_start, m);
-    /* AA[3] = (A2,2) */
+    /* AA4 = (A2,2) */
     _submatrix_cpy (&mut aa4, a, br_row_start, br_col_start, m);
-    /* AA[4] = (A1,1 + A1,2) */
+    /* AA5 = (A1,1 + A1,2) */
     _submatrix_add (&mut aa5, a, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m);
-    /* AA[5] = (A2,1 - A1,1) */
+    /* AA6 = (A2,1 - A1,1) */
     _submatrix_sub (&mut aa6, a, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
-    /* AA[6] = (A1,2 - A2,2) */
+    /* AA7 = (A1,2 - A2,2) */
     _submatrix_sub (&mut aa7, a, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
 
-    /* BB[0] = (B1,1 + B2,2) */
+    /* Initializes submatrices of `b` based on its quadrants, the manner described below */
+
+    /* BB1 = (B1,1 + B2,2) */
     _submatrix_add (&mut bb1, b, tl_row_start, tl_col_start, br_row_start, br_col_start, m);
-    /* BB[1] = (B1,1) */
+    /* BB2 = (B1,1) */
     _submatrix_cpy (&mut bb2, b, tl_row_start, tl_col_start, m);
-    /* BB[2] = (B1,2 - B2,2) */
+    /* BB3 = (B1,2 - B2,2) */
     _submatrix_sub (&mut bb3, b, tr_row_start, tr_col_start, br_row_start, br_col_start, m);
-    /* BB[3] = (B2,1 - B1,1) */
+    /* BB4 = (B2,1 - B1,1) */
     _submatrix_sub (&mut bb4, b, bl_row_start, bl_col_start, tl_row_start, tl_col_start, m);
-    /* BB[4] = (B2,2) */
+    /* BB5 = (B2,2) */
     _submatrix_cpy (&mut bb5, b, br_row_start, br_col_start, m);
-    /* BB[5] = (B1,1 + B1,2) */
+    /* BB6 = (B1,1 + B1,2) */
     _submatrix_add (&mut bb6, b, tl_row_start, tl_col_start, tr_row_start, tr_col_start, m); 
-    /* BB[6] = (B2,1 + B2,2) */
+    /* BB7 = (B2,1 + B2,2) */
     _submatrix_add (&mut bb7, b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
 
     /*
@@ -217,38 +219,38 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
      */
      
     let mut m1 = mult_strassen(
-        &mut Matrix::with_array(aa1, m, m),
-        &mut Matrix::with_array(bb1, m, m)
+        &mut Matrix::with_vector(aa1, m, m),
+        &mut Matrix::with_vector(bb1, m, m)
     );
 
     let m2 = mult_strassen(
-        &mut Matrix::with_array(aa2, m, m),
-        &mut Matrix::with_array(bb2, m, m)
+        &mut Matrix::with_vector(aa2, m, m),
+        &mut Matrix::with_vector(bb2, m, m)
     );
 
     let m3 = mult_strassen(
-        &mut Matrix::with_array(aa3, m, m),
-        &mut Matrix::with_array(bb3, m, m)
+        &mut Matrix::with_vector(aa3, m, m),
+        &mut Matrix::with_vector(bb3, m, m)
     );
 
     let mut m4 = mult_strassen(
-        &mut Matrix::with_array(aa4, m, m),
-        &mut Matrix::with_array(bb4, m, m)
+        &mut Matrix::with_vector(aa4, m, m),
+        &mut Matrix::with_vector(bb4, m, m)
     );
 
     let mut m5 = mult_strassen(
-        &mut Matrix::with_array(aa5, m, m),
-        &mut Matrix::with_array(bb5, m, m)
+        &mut Matrix::with_vector(aa5, m, m),
+        &mut Matrix::with_vector(bb5, m, m)
     );
 
     let m6 = mult_strassen(
-        &mut Matrix::with_array(aa6, m, m),
-        &mut Matrix::with_array(bb6, m, m)
+        &mut Matrix::with_vector(aa6, m, m),
+        &mut Matrix::with_vector(bb6, m, m)
     );
 
     let mut m7 = mult_strassen(
-        &mut Matrix::with_array(aa7, m, m),
-        &mut Matrix::with_array(bb7, m, m)
+        &mut Matrix::with_vector(aa7, m, m),
+        &mut Matrix::with_vector(bb7, m, m)
     );
 
     /* C1,1 = M1 + M4 - M5 + M7 */
@@ -323,7 +325,7 @@ _submatrix_cpy (c: &mut Vec<f64>, a: &Matrix,
     
     for i in 0..m {
         let indx = ((a_row_start + i) * a.cols) + a_col_start;
-        c.extend_from_slice(&a.array[indx..(indx + m)]);
+        c.extend_from_slice(&a.elements[indx..(indx + m)]);
     }
 }
 
@@ -342,17 +344,17 @@ _reconstitute (m11: &Matrix, m12: &Matrix,
 
     for i in 0..m {
         indx = i * m;
-        v.extend_from_slice(&m11.array[indx..(indx + m)]);
-        v.extend_from_slice(&m12.array[indx..(indx + m)]);
+        v.extend_from_slice(&m11.elements[indx..(indx + m)]);
+        v.extend_from_slice(&m12.elements[indx..(indx + m)]);
     }
 
     for i in 0..m {
         indx = i * m;
-        v.extend_from_slice(&m21.array[indx..(indx + m)]);
-        v.extend_from_slice(&m22.array[indx..(indx + m)]);
+        v.extend_from_slice(&m21.elements[indx..(indx + m)]);
+        v.extend_from_slice(&m22.elements[indx..(indx + m)]);
     }
 
-    return Matrix::with_array(v, n, n);
+    return Matrix::with_vector(v, n, n);
 }
 
 #[cfg(test)]
@@ -367,9 +369,9 @@ mod tests {
         let v2: Vec<f64> = vec![5.0, 19.0, 3.0, 6.0, 15.0, 9.0, 7.0, 8.0, 16.0];
         let v3: Vec<f64> = vec![136.0, 380.0, 172.0, 215.0, 424.0, 386.0, 163.0, 371.0, 259.0];
 
-        let a: Matrix = Matrix::with_array(v1, 3, 3);
-        let b: Matrix = Matrix::with_array(v2, 3, 3);
-        let c: Matrix = Matrix::with_array(v3, 3, 3);
+        let a: Matrix = Matrix::with_vector(v1, 3, 3);
+        let b: Matrix = Matrix::with_vector(v2, 3, 3);
+        let c: Matrix = Matrix::with_vector(v3, 3, 3);
 
         assert!(a.mult(&b, multipler).eq(&c));
 
@@ -377,9 +379,9 @@ mod tests {
         let v5: Vec<f64> = vec![5.0, 7.0, 14.0, 2.0, 8.0, 16.0, 4.0, 9.0, 13.0, 6.0, 8.0, 4.0, 6.0, 3.0, 2.0, 4.0];
         let v6: Vec<f64> = vec![378.0, 381.0, 286.0, 224.0, 258.0, 237.0, 190.0, 140.0, 370.0, 497.0, 346.0, 277.0, 223.0, 251.0, 266.0, 129.0];
 
-        let d: Matrix = Matrix::with_array(v4, 4, 4);
-        let e: Matrix = Matrix::with_array(v5, 4, 4);
-        let f: Matrix = Matrix::with_array(v6, 4, 4);
+        let d: Matrix = Matrix::with_vector(v4, 4, 4);
+        let e: Matrix = Matrix::with_vector(v5, 4, 4);
+        let f: Matrix = Matrix::with_vector(v6, 4, 4);
 
         assert!(d.mult(&e, multipler).eq(&f));
     }
@@ -422,8 +424,8 @@ mod tests {
             v2.push(rng.gen::<f64>() % 1000000.0);
         }
 
-        let a: Matrix = Matrix::with_array(v1, rows, cols);
-        let b: Matrix = Matrix::with_array(v2, cols, rows);
+        let a: Matrix = Matrix::with_vector(v1, rows, cols);
+        let b: Matrix = Matrix::with_vector(v2, cols, rows);
 
         let naive_result = a.mult(&b, mult_naive);
         let transpose_result = a.mult(&b, mult_transpose);
@@ -453,7 +455,7 @@ mod tests {
         let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
         let mut v2: Vec<f64> = Vec::with_capacity(4);
         let v3: Vec<f64> = vec![11.0, 11.0, 11.0, 11.0];
-        let a: Matrix = Matrix::with_array(v1, 4, 4);
+        let a: Matrix = Matrix::with_vector(v1, 4, 4);
 
         _submatrix_add (&mut v2, &a, 0, 0, 2, 2, 2);
 
@@ -476,7 +478,7 @@ mod tests {
         let v1: Vec<f64> = vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0];
         let mut v2: Vec<f64> = Vec::with_capacity(4);
         let v3: Vec<f64> = vec![9.0, 9.0, 9.0, 9.0];
-        let a: Matrix = Matrix::with_array(v1, 4, 4);
+        let a: Matrix = Matrix::with_vector(v1, 4, 4);
 
         _submatrix_sub (&mut v2, &a, 2, 2, 0, 0, 2);
 
@@ -501,7 +503,7 @@ mod tests {
         let mut v3: Vec<f64> = Vec::with_capacity(4);
         let v4: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
         let v5: Vec<f64> = vec![10.0, 10.0, 10.0, 10.0];
-        let a: Matrix = Matrix::with_array(v1, 4, 4);
+        let a: Matrix = Matrix::with_vector(v1, 4, 4);
 
         _submatrix_cpy(&mut v2, &a, 0, 0, 2);
         _submatrix_cpy(&mut v3, &a, 2, 2, 2);
@@ -531,11 +533,11 @@ mod tests {
          * | 3 3 10 10|
          * -          -
          */
-        let m11 = Matrix::with_array(vec![1.0, 1.0, 1.0, 1.0], 2, 2);
-        let m12 = Matrix::with_array(vec![2.0, 2.0, 2.0, 2.0], 2, 2);
-        let m21 = Matrix::with_array(vec![3.0, 3.0, 3.0, 3.0], 2, 2);
-        let m22 = Matrix::with_array(vec![10.0, 10.0, 10.0, 10.0], 2, 2);
-        let a = Matrix::with_array(vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0], 4, 4);
+        let m11 = Matrix::with_vector(vec![1.0, 1.0, 1.0, 1.0], 2, 2);
+        let m12 = Matrix::with_vector(vec![2.0, 2.0, 2.0, 2.0], 2, 2);
+        let m21 = Matrix::with_vector(vec![3.0, 3.0, 3.0, 3.0], 2, 2);
+        let m22 = Matrix::with_vector(vec![10.0, 10.0, 10.0, 10.0], 2, 2);
+        let a = Matrix::with_vector(vec![1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0], 4, 4);
 
         let b = _reconstitute (&m11, &m12, &m21, &m22, 2, 4);
 

@@ -43,8 +43,8 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
             v2.push(rng.gen_range(0.0..1000000.0));
         }
 
-        let a = Matrix::with_array(v1, x, y);
-        let b = Matrix::with_array(v2, y, x);
+        let a = Matrix::with_vector(v1, x, y);
+        let b = Matrix::with_vector(v2, y, x);
 
         // Run the timed tests
         for _ in 0..trials {
