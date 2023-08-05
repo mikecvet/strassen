@@ -25,7 +25,7 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
 
     let mut timer = Timer::new();
 
-    println!("x y nxn naive transpose strassen");
+    println!("x y nxn naive transpose strassen par_strassen");
 
     for i in 1..(factor + 1) {
         let x: usize = i * lower;
@@ -57,7 +57,7 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
 
         let d = trials as f64;
 
-       println!("{} {} {} {:.2} {:.2} {:.2} {:.2}", x, y, x * y,
+       println!("{} {} {} {:.2}ms {:.2}ms {:.2}ms {:.2}ms", x, y, x * y,
          (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
           (strassen_accumulator as f64) / d, (par_strassen_accumulator as f64) / d);
     }

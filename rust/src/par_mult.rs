@@ -1,7 +1,6 @@
 pub use crate::matrix::Matrix;
 pub use crate::mult::*;
 use rand::thread_rng;
-use rayon::prelude::*;
 use threadpool::ThreadPool;
 use std::sync::{Arc, Mutex};
 
