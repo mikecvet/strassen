@@ -15,11 +15,11 @@ path = "src/lib.rs"
 opt-level = 0
 
 [profile.release]
+codegen-units = 1
 opt-level = 3
-debug = true
+lto = "thin"
 
 [dependencies]
 colored = "2.0.4"
 clap = { version = "4.2.7", features = ["derive"] }
 rand = "0.8.5"
-rayon = "1.7.0"
