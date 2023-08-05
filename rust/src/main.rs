@@ -49,20 +49,17 @@ time_multiplication (lower: usize, upper: usize, factor: usize, trials: usize) {
 
         // Run the timed tests
         for _ in 0..trials {
-
-            //naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
-            //transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
-            //strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
+            naive_accumulator += record_trial(&a, &b, &mut timer, mult_naive);
+            transpose_accumulator += record_trial(&a, &b, &mut timer, mult_transpose);
+            strassen_accumulator += record_trial(&a, &b, &mut timer, mult_strassen);
             par_strassen_accumulator += record_trial(&a, &b, &mut timer, mult_par_strassen);
         }
 
         let d = trials as f64;
 
-       // println!("{} {} {} {:.2} {:.2} {:.2} {:.2}", x, y, x * y,
-       //   (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
-       //    (strassen_accumulator as f64) / d, (par_strassen_accumulator as f64) / d);
-
-        println!("{} {} {} {:.2}", x, y, x * y, (par_strassen_accumulator as f64) / d);
+       println!("{} {} {} {:.2} {:.2} {:.2} {:.2}", x, y, x * y,
+         (naive_accumulator as f64) / d, (transpose_accumulator as f64) / d,
+          (strassen_accumulator as f64) / d, (par_strassen_accumulator as f64) / d);
     }
 }
 
