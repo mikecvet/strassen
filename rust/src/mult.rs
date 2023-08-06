@@ -1,6 +1,5 @@
 pub use crate::matrix::Matrix;
 use rand::thread_rng;
-use std::io;
 
 static mut TEST_STATE:bool = false;
 
@@ -165,9 +164,9 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     * C1,2 = M3 + M5
     * C2,1 = M2 + M4
     * C2,2 = M1 - M2 + M3 + M6
-    * 
+    *
     * Each of the block matrices M1..M7 is composed of products of quadrants from A and B as follows:
-    * 
+    *
     * M1 = AA[0] * BB[0] = (A1,1 + A2,2)(B1,1 + B2,2)
     * M2 = AA[1] * BB[1] = (A2,1 + A2,2)(B1,1)
     * M3 = AA[2] * BB[2] = (A1,1)(B1,2 - B2,2)
@@ -320,9 +319,8 @@ submatrix_sub (c: &mut Vec<f64>, a: &Matrix,
  */
 pub fn 
 submatrix_cpy (c: &mut Vec<f64>, a: &Matrix, 
-                a_row_start: usize, a_col_start: usize, 
-                m: usize) {
-    
+               a_row_start: usize, a_col_start: usize, m: usize) {
+
     for i in 0..m {
         let indx = ((a_row_start + i) * a.cols) + a_col_start;
         c.extend_from_slice(&a.elements[indx..(indx + m)]);
@@ -336,8 +334,8 @@ submatrix_cpy (c: &mut Vec<f64>, a: &Matrix,
  */
 pub fn 
 reconstitute (m11: &Matrix, m12: &Matrix, 
-               m21: &Matrix, m22: &Matrix, 
-               m: usize, n: usize) -> Matrix {
+              m21: &Matrix, m22: &Matrix, 
+              m: usize, n: usize) -> Matrix {
     
     let mut v:Vec<f64> = Vec::with_capacity(n * n);
     let mut indx: usize;
@@ -364,7 +362,7 @@ mod tests {
 
     use super::*;
 
-    fn test_multiplication_outputs(multipler: fn(&Matrix, &Matrix) -> Matrix) {
+    fn test_multiplication_outputs (multipler: fn(&Matrix, &Matrix) -> Matrix) {
         let v1: Vec<f64> = vec![12.0, 8.0, 4.0, 3.0, 17.0, 14.0, 9.0, 8.0, 10.0];
         let v2: Vec<f64> = vec![5.0, 19.0, 3.0, 6.0, 15.0, 9.0, 7.0, 8.0, 16.0];
         let v3: Vec<f64> = vec![136.0, 380.0, 172.0, 215.0, 424.0, 386.0, 163.0, 371.0, 259.0];

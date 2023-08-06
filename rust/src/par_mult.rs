@@ -7,37 +7,6 @@ use std::sync::{Arc, Mutex};
 static mut TEST_STATE:bool = false;
 
 /**
- * Variant of the naive multiplication algorithm, which uses the transpose of `b`, resuting in better memory locality performance characteristics. Still O(n^3).
- * Panics if matrices `a` and `b` are of incompatbile dimensions.
- */
-pub fn 
-mult_par_transpose (a: &Matrix, b: &Matrix) -> Matrix {
-    if a.rows == b.cols {
-        let m = a.rows;
-        let n = a.cols;
-
-        let t = b.transpose();
-        let mut c: Vec<f64> = Vec::with_capacity(m * m);
-
-        for i in 0..m {
-            for j in 0..m {
-
-                let mut sum:f64 = 0.0;
-                for k in 0..n {
-                    sum += a.at(i, k) * t.at(j, k);
-                }
-
-                c.push(sum);
-            }
-        }
-
-        return Matrix::with_vector(c, m, m);
-    } else {
-        panic!("Matrix sizes do not match");
-    }
-}
-
-/**
  * Strassen algorithm. See https://en.wikipedia.org/wiki/Strassen_algorithm
  * Breaks the provided matrices down into 7 smaller submatrices for multiplication, which results in 
  * smaller asymptotic complexity of around O(n^2.8), at the expense of a higher scalar constant due to the extra work required.
@@ -229,11 +198,13 @@ _mult_par_strassen (a: &Matrix, b: &Matrix, pool: &ThreadPool) -> Matrix {
 }
 
 /**
- * Execute a recursive strassen multiplication of the given vectors.
+ * Execute a recursive strassen multiplication of the given vectors, from a thread contained
+ * within the provided thread pool.
  */
 fn 
-_par_run_strassen(a: Vec<f64>, b: Vec<f64>, 
-                  m: usize, pool: &ThreadPool) -> Arc<Mutex<Option<Matrix>>> {
+_par_run_strassen (a: Vec<f64>, b: Vec<f64>, 
+                   m: usize, pool: &ThreadPool) 
+                     -> Arc<Mutex<Option<Matrix>>> {
     let m1: Arc<Mutex<Option<Matrix>>> = Arc::new(Mutex::new(None));
     let m1_clone = Arc::clone(&m1);
      
@@ -257,7 +228,7 @@ mod tests {
 
     use super::*;
 
-    fn test_multiplication_outputs(multipler: fn(&Matrix, &Matrix) -> Matrix) {
+    fn test_multiplication_outputs (multipler: fn(&Matrix, &Matrix) -> Matrix) {
         let v1: Vec<f64> = vec![12.0, 8.0, 4.0, 3.0, 17.0, 14.0, 9.0, 8.0, 10.0];
         let v2: Vec<f64> = vec![5.0, 19.0, 3.0, 6.0, 15.0, 9.0, 7.0, 8.0, 16.0];
         let v3: Vec<f64> = vec![136.0, 380.0, 172.0, 215.0, 424.0, 386.0, 163.0, 371.0, 259.0];
@@ -277,11 +248,6 @@ mod tests {
         let f: Matrix = Matrix::with_vector(v6, 4, 4);
 
         assert!(d.mult(&e, multipler).eq(&f));
-    }
-
-    #[test]
-    fn test_mult_par_transpose () {
-        test_multiplication_outputs(mult_par_transpose);
     }
 
     #[test]
@@ -315,10 +281,10 @@ mod tests {
         let a: Matrix = Matrix::with_vector(v1, rows, cols);
         let b: Matrix = Matrix::with_vector(v2, cols, rows);
 
-        let transpose_par_result = a.mult(&b, mult_par_transpose);
+        let transpose_result = a.mult(&b, mult_transpose);
         let strassen_par_result = a.mult(&b, mult_par_strassen);
 
-        assert!(transpose_par_result.eq(&strassen_par_result));
-        assert!(strassen_par_result.eq(&transpose_par_result));
+        assert!(transpose_result.eq(&strassen_par_result));
+        assert!(strassen_par_result.eq(&transpose_result));
     }
 }
