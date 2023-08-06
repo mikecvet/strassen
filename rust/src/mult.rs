@@ -13,12 +13,10 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
-
         let mut c: Vec<f64> = Vec::with_capacity(m * m);
 
         for i in 0..m {
             for j in 0..m {
-
                 let mut sum:f64 = 0.0;
                 for k in 0..n {
                     sum += a.at(i, k) * b.at(k, j);
@@ -43,13 +41,11 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
     if a.rows == b.cols {
         let m = a.rows;
         let n = a.cols;
-
         let t = b.transpose();
         let mut c: Vec<f64> = Vec::with_capacity(m * m);
 
         for i in 0..m {
             for j in 0..m {
-
                 let mut sum:f64 = 0.0;
                 for k in 0..n {
                     sum += a.at(i, k) * t.at(j, k);
@@ -162,6 +158,25 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     let mut bb6 = Vec::with_capacity(m * m);
     let mut bb7 = Vec::with_capacity(m * m);
 
+   /*
+    * The output matrix C is expressed in terms of the block matrices M1..M7
+    *
+    * C1,1 = M1 + M4 - M5 + M7
+    * C1,2 = M3 + M5
+    * C2,1 = M2 + M4
+    * C2,2 = M1 - M2 + M3 + M6
+    * 
+    * Each of the block matrices M1..M7 is composed of products of quadrants from A and B as follows:
+    * 
+    * M1 = AA[0] * BB[0] = (A1,1 + A2,2)(B1,1 + B2,2)
+    * M2 = AA[1] * BB[1] = (A2,1 + A2,2)(B1,1)
+    * M3 = AA[2] * BB[2] = (A1,1)(B1,2 - B2,2)
+    * M4 = AA[3] * BB[3] = (A2,2)(B2,1 - B1,1)
+    * M5 = AA[4] * BB[4] = (A1,1 + A1,2)(B2,2)
+    * M6 = AA[5] * BB[5] = (A2,1 - A1,1)(B1,1 + B1,2)
+    * M7 = AA[6] * BB[6] = (A1,2 - A2,2)(B2,1 + B2,2)
+    */
+
     /* Initializes submatrices of `a` based on its quadrants, the manner described below */
 
     /* AA1 = (A1,1 + A2,2) */
@@ -197,22 +212,7 @@ _mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
     submatrix_add (&mut bb7, b, bl_row_start, bl_col_start, br_row_start, br_col_start, m);
 
     /*
-     * The output matrix C is expressed in terms of the block matrices M1..M7
-     *
-     * C1,1 = M1 + M4 - M5 + M7
-     * C1,2 = M3 + M5
-     * C2,1 = M2 + M4
-     * C2,2 = M1 - M2 + M3 + M6
-     * 
-     * Each of the block matrices M1..M7 is composed of quadrants from A and B as follows:
-     * 
-     * M1 = AA[0] * BB[0] = (A1,1 + A2,2)(B1,1 + B2,2)
-     * M2 = AA[1] * BB[1] = (A2,1 + A2,2)(B1,1)
-     * M3 = AA[2] * BB[2] = (A1,1)(B1,2 - B2,2)
-     * M4 = AA[3] * BB[3] = (A2,2)(B2,1 - B1,1)
-     * M5 = AA[4] * BB[4] = (A1,1 + A1,2)(B2,2)
-     * M6 = AA[5] * BB[5] = (A2,1 - A1,1)(B1,1 + B1,2)
-     * M7 = AA[6] * BB[6] = (A1,2 - A2,2)(B2,1 + B2,2)
+     * Build the intermediate matrices M1..M7
      * 
      * The following operations each recurse further, passing their respective submatrices into the 
      * main `mult_strassen` function above.
