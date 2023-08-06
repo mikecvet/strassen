@@ -20,7 +20,7 @@ A.mult (B) // A now equals A * B
 
 # Rust
 
-The Rust implementation is under `rust/src` primarily located in two files - `matrix.rs` contains the `Matrix` implementation of matrix structure and convenience functions. These are hardcoded to use `f64` as values. `mult.rs` contains the acutal multiplication logic. Matrices are multiplied by passing a multiplication function pointer into `Matrix.mult()`, for example
+This implementation is discussed in [Better-than-Cubic Complexity for Matrix Multiplication in Rust](https://medium.com/@mikecvet/better-than-cubic-complexity-for-matrix-multiplication-in-rust-cf8dfb6299f6). The Rust implementation is under `rust/src` primarily located in two files - `matrix.rs` contains the `Matrix` implementation of matrix structure and convenience functions. These are hardcoded to use `f64` as values. `mult.rs` contains the acutal multiplication logic. Matrices are multiplied by passing a multiplication function pointer into `Matrix.mult()`, for example
 
 ```
 let a = Matrix::with_array(v1, x, y);
