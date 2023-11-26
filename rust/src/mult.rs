@@ -26,7 +26,7 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
             }
         }
 
-        return Matrix::with_vector(c, m, m);
+        return Matrix::with_vector(c, m, n);
     } else {
         panic!("Matrix sizes do not match");
     }
@@ -56,7 +56,7 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
             }
         }
 
-        return Matrix::with_vector(c, m, m);
+        return Matrix::with_vector(c, m, n);
     } else {
         panic!("Matrix sizes do not match");
     }
