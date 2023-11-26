@@ -9,15 +9,16 @@ static mut TEST_STATE:bool = false;
  */
 pub fn 
 mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
-    if a.rows == b.cols {
+    if a.cols == b.rows {
         let m = a.rows;
-        let n = a.cols;
-        let mut c: Vec<f64> = Vec::with_capacity(m * m);
+        let n = b.cols;
+        let p = a.cols;
+        let mut c: Vec<f64> = Vec::with_capacity(m * n);
 
         for i in 0..m {
-            for j in 0..m {
+            for j in 0..n {
                 let mut sum:f64 = 0.0;
-                for k in 0..n {
+                for k in 0..p {
                     sum += a.at(i, k) * b.at(k, j);
                 }
 
@@ -37,16 +38,17 @@ mult_naive (a: &Matrix, b: &Matrix) -> Matrix {
  */
 pub fn 
 mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
-    if a.rows == b.cols {
+    if a.cols == b.rows {
         let m = a.rows;
-        let n = a.cols;
+        let n = b.cols;
+        let p = a.cols;
         let t = b.transpose();
-        let mut c: Vec<f64> = Vec::with_capacity(m * m);
+        let mut c: Vec<f64> = Vec::with_capacity(m * n);
 
         for i in 0..m {
-            for j in 0..m {
+            for j in 0..n {
                 let mut sum:f64 = 0.0;
-                for k in 0..n {
+                for k in 0..p {
                     sum += a.at(i, k) * t.at(j, k);
                 }
 
@@ -71,7 +73,7 @@ mult_transpose (a: &Matrix, b: &Matrix) -> Matrix {
 pub fn
 mult_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
-    if a.rows != b.cols {
+    if a.cols != b.rows {
         panic!("Matrix sizes do not match");
     }
 

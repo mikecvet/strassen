@@ -17,7 +17,7 @@ static mut TEST_STATE:bool = false;
 pub fn
 mult_par_strassen (a: &Matrix, b: &Matrix) -> Matrix {
 
-    if a.rows != b.cols {
+    if a.cols != b.rows {
         panic!("Matrix sizes do not match");
     }
 
